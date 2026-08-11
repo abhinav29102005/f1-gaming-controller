@@ -42,12 +42,14 @@ class InputLoop {
     });
   }
 
+  int _lastSendTime = 0;
+  Uint8List? _lastReportBytes;
+
   Future<void> _runTickLoop() async {
     while (isRunning) {
       _tick();
-      // 4ms target = ~250Hz. This is the optimal sweet spot.
-      // 500Hz (2ms) can cause UDP buffer overflow / packet loss over USB.
-      await Future.delayed(const Duration(milliseconds: 4));
+      // Internal polling engine runs at 1000Hz (1ms) for 0ms latency
+      await Future.delayed(const Duration(milliseconds: 1));
     }
   }
 
@@ -57,12 +59,35 @@ class InputLoop {
 
   void _tick() {
     final report = _serializer.packReport(state, profile);
-    connectionManager.sendReport(
-      report,
-      connectionManager.socketRelay.hostAddress,
-      connectionManager.socketRelay.hostPort,
-    );
-    _packetsThisSecond++;
+    
+    // Delta-Sending Logic:
+    // Only send if the report has changed, OR if 10ms (keepalive) has passed.
+    // This prevents Android's USB network stack from choking on 1000Hz polling.
+    bool changed = false;
+    if (_lastReportBytes == null) {
+      changed = true;
+    } else {
+      // Compare bytes (skip sequence number at byte 2)
+      for (int i = 3; i < report.length; i++) {
+        if (report[i] != _lastReportBytes![i]) {
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    int now = DateTime.now().millisecondsSinceEpoch;
+    if (changed || (now - _lastSendTime) >= 10) {
+      _lastReportBytes = Uint8List.fromList(report);
+      _lastSendTime = now;
+      
+      connectionManager.sendReport(
+        report,
+        connectionManager.socketRelay.hostAddress,
+        connectionManager.socketRelay.hostPort,
+      );
+      _packetsThisSecond++;
+    }
   }
 
   void stop() {

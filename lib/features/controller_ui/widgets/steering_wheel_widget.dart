@@ -71,7 +71,7 @@ class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTi
   }
 
   double _smoothedGy = 0.0;
-  final double _emaAlpha = 0.6; // Higher = more responsive (0.0 = sluggish, 1.0 = raw)
+  final double _emaAlpha = 1.0; // 1.0 = raw input (0ms lag), 0.0 = max sluggish
 
   void _startGyroListening() {
     _gyroSubscription?.cancel();
