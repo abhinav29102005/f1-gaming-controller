@@ -34,33 +34,22 @@ class MultiplayerLobbyWidget extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Player Slot Selector Badges
+          // App Title / Logo Area
           Row(
-            children: List.generate(4, (index) {
-              bool isSelected = state.playerId == index;
-              Color slotColor = F1Theme.getPlayerColor(index);
-              return GestureDetector(
-                onTap: () => onPlayerSlotChanged(index),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isSelected ? slotColor : F1Theme.carbonCard,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: slotColor, width: isSelected ? 2 : 1),
-                  ),
-                  child: Text(
-                    'P${index + 1}',
-                    style: TextStyle(
-                      color: isSelected ? Colors.black : Colors.white70,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
+            children: [
+              Icon(Icons.sports_motorsports, color: playerColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'F1 CONTROLLER',
+                style: TextStyle(
+                  color: playerColor,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  letterSpacing: 2.0,
+                  fontStyle: FontStyle.italic,
                 ),
-              );
-            }),
+              ),
+            ],
           ),
           // Live Hz & Telemetry Monitor + Mode Switchers
           Row(

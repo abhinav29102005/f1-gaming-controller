@@ -38,15 +38,13 @@ def main():
         print("Running in simulation & telemetry reporting mode...\n")
         virtual_pads = {}
     else:
-        print("[OK] ViGEmBus integration ready! Initializing 4 Virtual Xbox Controllers...")
+        print("[OK] ViGEmBus integration ready! Initializing 1 Virtual Xbox Controller...")
         try:
-            virtual_pads = {
-                i: vg.VX360Gamepad() for i in range(4)
-            }
-            print("[OK] 4 Virtual Xbox 360 Controllers registered in Windows Device Manager.")
+            virtual_pad = vg.VX360Gamepad()
+            print("[OK] 1 Virtual Xbox 360 Controller registered in Windows Device Manager.")
         except Exception as e:
             print(f"[WARNING] Could not initialize ViGEmBus driver: {e}")
-            virtual_pads = {}
+            virtual_pad = None
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -84,8 +82,8 @@ def main():
             sock.sendto(pong, addr)
 
             # Feeds values to Windows Virtual Xbox 360 Controller
-            if VIGEM_AVAILABLE and vg is not None and p_id in virtual_pads:
-                pad = virtual_pads[p_id]
+            if VIGEM_AVAILABLE and vg is not None and virtual_pad is not None:
+                pad = virtual_pad
                 pad.reset()
 
                 # Steering -> Left Thumbstick X (-1.0 to 1.0)
