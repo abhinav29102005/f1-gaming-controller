@@ -23,6 +23,7 @@ class HostReceiverEngine {
   final Map<int, HostPlayerInfo> activePlayers = {};
   Timer? _hzTimer;
   Process? _pythonProcess;
+  bool companionError = false;
 
   final ValueNotifier<int> activeCountNotifier = ValueNotifier<int>(0);
   final StreamController<int> _packetStreamController = StreamController<int>.broadcast();
@@ -31,6 +32,7 @@ class HostReceiverEngine {
   Future<bool> startServer({int bindPort = 9999}) async {
     port = bindPort;
     try {
+      companionError = false;
       _socket?.close();
       _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, port);
       _socket?.broadcastEnabled = true;
@@ -88,11 +90,22 @@ class HostReceiverEngine {
           runInShell: true,
         );
         debugPrint('Launched Virtual Xbox Companion Server: ${_pythonProcess?.pid}');
+        
+        _pythonProcess?.exitCode.then((code) {
+          if (isListening && code != 0) {
+            companionError = true;
+            _packetStreamController.add(-1); // Trigger UI rebuild
+          }
+        });
       } else {
+        companionError = true;
         debugPrint('WARNING: Could not find companion_server\\setup.bat');
+        _packetStreamController.add(-1); // Trigger UI rebuild
       }
     } catch (e) {
+      companionError = true;
       debugPrint('Failed to launch companion server: $e');
+      _packetStreamController.add(-1);
     }
   }
 

@@ -141,7 +141,25 @@ class _HostReceiverScreenState extends State<HostReceiverScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            if (_engine.companionError)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: F1Theme.glassDecoration(borderColor: F1Theme.f1Red),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: F1Theme.f1Red, size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'CRITICAL ERROR: Failed to launch the Virtual Xbox Engine. Ensure the "companion_server" folder is next to this executable, and that Python & vgamepad are installed.',
+                        style: TextStyle(color: F1Theme.f1Red, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Host IP Display
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
