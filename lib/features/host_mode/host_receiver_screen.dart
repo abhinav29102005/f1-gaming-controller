@@ -31,10 +31,15 @@ class _HostReceiverScreenState extends State<HostReceiverScreen> {
         includeLinkLocal: false,
       );
       for (var interface in interfaces) {
+        final name = interface.name.toLowerCase();
+        
+        // Skip explicitly known virtual adapters
+        if (name.contains('virtual') || name.contains('veth') || name.contains('wsl') || name.contains('vmware') || name.contains('tailscale')) {
+          continue;
+        }
+
         // Prefer Wi-Fi or Ethernet over virtual adapters
-        if (interface.name.toLowerCase().contains('wi-fi') || 
-            interface.name.toLowerCase().contains('eth') ||
-            interface.name.toLowerCase().contains('wlan')) {
+        if (name.contains('wi-fi') || name.contains('eth') || name.contains('wlan')) {
           setState(() {
             _localIp = interface.addresses.first.address;
           });
@@ -184,6 +189,19 @@ class _HostReceiverScreenState extends State<HostReceiverScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Diagnostic Text
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'RAW UDP DIAGNOSTICS: Received ${_engine.rawPacketsReceived} packets | Last: ${_engine.lastRawPacketType} @ ${_engine.lastRawPacketTime}',
+                style: const TextStyle(color: F1Theme.electricAmber, fontSize: 11, fontFamily: 'monospace'),
               ),
             ),
             const SizedBox(height: 16),

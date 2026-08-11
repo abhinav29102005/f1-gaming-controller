@@ -26,6 +26,10 @@ class HostReceiverEngine {
   Process? _pythonProcess;
   bool companionError = false;
 
+  int rawPacketsReceived = 0;
+  String lastRawPacketType = "NONE";
+  String lastRawPacketTime = "Never";
+
   final ValueNotifier<int> activeCountNotifier = ValueNotifier<int>(0);
   final StreamController<int> _packetStreamController = StreamController<int>.broadcast();
   Stream<int> get packetStream => _packetStreamController.stream;
@@ -113,10 +117,18 @@ class HostReceiverEngine {
 
   void _handleDatagram(Datagram datagram) {
     final data = datagram.data;
+    if (data.isEmpty) return;
+
+    rawPacketsReceived++;
+    final now = DateTime.now();
+    lastRawPacketTime = "${now.hour}:${now.minute}:${now.second}.${now.millisecond}";
+
     final textStr = String.fromCharCodes(data);
 
     // Auto-Discovery request from mobile controllers
     if (textStr.startsWith('F1_CONTROLLER_DISCOVER')) {
+      lastRawPacketType = "BROADCAST_DISCOVER";
+      _packetStreamController.add(-1);
       final announce = Uint8List.fromList('F1_HOST_ANNOUNCE:$port'.codeUnits);
       _socket?.send(announce, datagram.address, datagram.port);
       return;
@@ -124,6 +136,8 @@ class HostReceiverEngine {
 
     // Haptic Feedback from Python Slave -> Forward to Mobile App
     if (textStr.startsWith('F1_VIB:')) {
+      lastRawPacketType = "INTERNAL_VIBRATION";
+      _packetStreamController.add(-1);
       if (activePlayers.isNotEmpty) {
         // Forward to the primary connected mobile client (Player 0)
         final player = activePlayers[0] ?? activePlayers.values.first;
@@ -136,6 +150,7 @@ class HostReceiverEngine {
 
     // Binary Gamepad Report (10 Bytes)
     if (data.length >= 10 && data[0] == 0xF1) {
+      lastRawPacketType = "TELEMETRY";
       int playerId = data[1] & 0x03;
       int seq = data[2];
 
