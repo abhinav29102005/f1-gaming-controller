@@ -22,6 +22,7 @@ class HostReceiverEngine {
 
   final Map<int, HostPlayerInfo> activePlayers = {};
   Timer? _hzTimer;
+  Process? _pythonProcess;
 
   final ValueNotifier<int> activeCountNotifier = ValueNotifier<int>(0);
   final StreamController<int> _packetStreamController = StreamController<int>.broadcast();
@@ -33,6 +34,11 @@ class HostReceiverEngine {
       _socket?.close();
       _socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, port);
       _socket?.broadcastEnabled = true;
+
+      // On Windows, launch the Virtual Gamepad relay script automatically
+      if (Platform.isWindows) {
+        _launchCompanionServer();
+      }
 
       _socket?.listen((RawSocketEvent event) {
         if (event == RawSocketEvent.read) {
@@ -63,6 +69,30 @@ class HostReceiverEngine {
     } catch (e) {
       isListening = false;
       return false;
+    }
+  }
+
+  Future<void> _launchCompanionServer() async {
+    try {
+      // Look for setup.bat in relative path (development) or next to the executable (production)
+      File setupFile = File('companion_server\\setup.bat');
+      if (!setupFile.existsSync()) {
+        final execDir = File(Platform.resolvedExecutable).parent.path;
+        setupFile = File('$execDir\\companion_server\\setup.bat');
+      }
+
+      if (setupFile.existsSync()) {
+        _pythonProcess = await Process.start(
+          'cmd.exe',
+          ['/c', setupFile.absolute.path],
+          runInShell: true,
+        );
+        debugPrint('Launched Virtual Xbox Companion Server: ${_pythonProcess?.pid}');
+      } else {
+        debugPrint('WARNING: Could not find companion_server\\setup.bat');
+      }
+    } catch (e) {
+      debugPrint('Failed to launch companion server: $e');
     }
   }
 
@@ -131,6 +161,13 @@ class HostReceiverEngine {
     isListening = false;
     _hzTimer?.cancel();
     _socket?.close();
+    
+    if (_pythonProcess != null) {
+      // Force kill the cmd tree
+      Process.run('taskkill', ['/F', '/T', '/PID', _pythonProcess!.pid.toString()]);
+      _pythonProcess = null;
+      debugPrint('Killed Virtual Xbox Companion Server');
+    }
   }
 
   void dispose() {
