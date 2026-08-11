@@ -68,28 +68,62 @@ class MultiplayerLobbyWidget extends StatelessWidget {
               ValueListenableBuilder<int>(
                 valueListenable: inputLoop.hzNotifier,
                 builder: (context, hz, child) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black45,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: F1Theme.neonCyan),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.bolt, color: F1Theme.neonCyan, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$hz Hz',
-                          style: const TextStyle(
-                            color: F1Theme.neonCyan,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'monospace',
-                          ),
+                  final isConnected = inputLoop.connectionManager.getStats().isConnected;
+                  return Row(
+                    children: [
+                      // Connection Status Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: isConnected ? F1Theme.neonGreen.withOpacity(0.2) : F1Theme.f1Red.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: isConnected ? F1Theme.neonGreen : F1Theme.f1Red),
                         ),
-                      ],
-                    ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isConnected ? Icons.wifi : Icons.wifi_off,
+                              color: isConnected ? F1Theme.neonGreen : F1Theme.f1Red,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isConnected ? 'CONNECTED' : 'DISCONNECTED',
+                              style: TextStyle(
+                                color: isConnected ? F1Theme.neonGreen : F1Theme.f1Red,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Hz Monitor
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black45,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: F1Theme.neonCyan),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.bolt, color: F1Theme.neonCyan, size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$hz Hz',
+                              style: const TextStyle(
+                                color: F1Theme.neonCyan,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -104,10 +138,17 @@ class MultiplayerLobbyWidget extends StatelessWidget {
                 onPressed: onOpenConnection,
                 tooltip: 'Connection Setup',
               ),
-              IconButton(
-                icon: const Icon(Icons.tune, color: Colors.white),
+              const SizedBox(width: 4),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.tune, color: Colors.black, size: 16),
+                label: const Text('CALIBRATE', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: F1Theme.electricAmber,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                  minimumSize: const Size(0, 32),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
                 onPressed: onOpenSettings,
-                tooltip: 'Profile & Settings',
               ),
             ],
           ),

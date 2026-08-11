@@ -70,6 +70,9 @@ class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTi
     }
   }
 
+  double _smoothedGy = 0.0;
+  final double _emaAlpha = 0.25; // Smoothing factor (0.0 = max smooth, 1.0 = raw)
+
   void _startGyroListening() {
     _gyroSubscription?.cancel();
     // Use accelerometer for absolute tilt angle (gravity based)
@@ -78,10 +81,13 @@ class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTi
       
       // A simple robust approach: mapping the Y acceleration to an angle
       // 9.81 m/s^2 is 1G.
-      double gY = event.y.clamp(-9.81, 9.81);
+      double rawGy = event.y.clamp(-9.81, 9.81);
+      
+      // Apply Exponential Moving Average (EMA) Filter for smoothing
+      _smoothedGy = (_emaAlpha * rawGy) + ((1.0 - _emaAlpha) * _smoothedGy);
       
       // Apply deadzone
-      double normalizedGy = gY / 9.81;
+      double normalizedGy = _smoothedGy / 9.81;
       if (normalizedGy.abs() < widget.gyroDeadzone) {
         normalizedGy = 0.0;
       } else {
