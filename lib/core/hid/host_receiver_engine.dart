@@ -85,8 +85,8 @@ class HostReceiverEngine {
 
       if (setupFile.existsSync()) {
         _pythonProcess = await Process.start(
-          'cmd.exe',
-          ['/c', '${setupFile.absolute.path} --slave'],
+          setupFile.absolute.path,
+          ['--slave'],
           workingDirectory: setupFile.parent.absolute.path,
           runInShell: true,
         );
