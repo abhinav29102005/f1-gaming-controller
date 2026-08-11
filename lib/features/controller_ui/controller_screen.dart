@@ -174,9 +174,11 @@ class _ControllerScreenState extends State<ControllerScreen> {
                     ),
                     const SizedBox(width: 8),
                     // Right Column: F1 Button Cluster + Throttle Pedal Slider
-                    F1ButtonCluster(
-                      state: _state,
-                      hapticsEnabled: _profile.hapticFeedbackEnabled,
+                    Expanded(
+                      child: F1ButtonCluster(
+                        state: _state,
+                        hapticsEnabled: _profile.hapticFeedbackEnabled,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     SizedBox(
