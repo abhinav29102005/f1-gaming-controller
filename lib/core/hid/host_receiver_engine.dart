@@ -6,13 +6,14 @@ import '../models/controller_state.dart';
 class HostPlayerInfo {
   final int playerId;
   final String remoteIp;
+  final int remotePort;
   int packetsThisSecond = 0;
   int currentHz = 0;
   double lastPingMs = 4.0;
   int lastPacketTime = 0;
   final ControllerState state = ControllerState();
 
-  HostPlayerInfo({required this.playerId, required this.remoteIp});
+  HostPlayerInfo({required this.playerId, required this.remoteIp, required this.remotePort});
 }
 
 class HostReceiverEngine {
@@ -121,6 +122,18 @@ class HostReceiverEngine {
       return;
     }
 
+    // Haptic Feedback from Python Slave -> Forward to Mobile App
+    if (textStr.startsWith('F1_VIB:')) {
+      if (activePlayers.isNotEmpty) {
+        // Forward to the primary connected mobile client (Player 0)
+        final player = activePlayers[0] ?? activePlayers.values.first;
+        try {
+          _socket?.send(data, InternetAddress(player.remoteIp), player.remotePort);
+        } catch (_) {}
+      }
+      return;
+    }
+
     // Binary Gamepad Report (10 Bytes)
     if (data.length >= 10 && data[0] == 0xF1) {
       int playerId = data[1] & 0x03;
@@ -141,7 +154,7 @@ class HostReceiverEngine {
 
       HostPlayerInfo player = activePlayers.putIfAbsent(
         playerId,
-        () => HostPlayerInfo(playerId: playerId, remoteIp: datagram.address.address),
+        () => HostPlayerInfo(playerId: playerId, remoteIp: datagram.address.address, remotePort: datagram.port),
       );
 
       player.lastPacketTime = DateTime.now().millisecondsSinceEpoch;

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:vibration/vibration.dart';
 
 class SocketRelay {
   RawDatagramSocket? _socket;
@@ -79,6 +80,32 @@ class SocketRelay {
         String ip = datagram.address.address;
         _discoveredHostsController.add(ip);
       }
+    } else if (text.startsWith('F1_VIB:')) {
+      final parts = text.split(':');
+      if (parts.length == 3) {
+        int large = int.tryParse(parts[1]) ?? 0;
+        int small = int.tryParse(parts[2]) ?? 0;
+        _handleHapticFeedback(large, small);
+      }
+    }
+  }
+
+  void _handleHapticFeedback(int large, int small) async {
+    if (large == 0 && small == 0) {
+      Vibration.cancel();
+      return;
+    }
+    
+    // Calculate intensity 0-255
+    int maxMotor = large > small ? large : small;
+    if (maxMotor < 10) return; // Prevent micro vibrations from freezing the phone
+
+    bool? hasCustom = await Vibration.hasCustomVibrationsSupport();
+    if (hasCustom == true) {
+      // Convert 0-255 to 1-255 amplitude
+      Vibration.vibrate(duration: 150, amplitude: maxMotor.clamp(1, 255));
+    } else {
+      Vibration.vibrate(duration: 150);
     }
   }
 

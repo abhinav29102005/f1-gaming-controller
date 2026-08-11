@@ -54,6 +54,20 @@ def main():
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((host, port))
 
+    def rumble_callback(client, target, large_motor, small_motor, led_number, user_data):
+        if args.slave:
+            try:
+                vib_msg = f"F1_VIB:{large_motor}:{small_motor}".encode('utf-8')
+                sock.sendto(vib_msg, ("127.0.0.1", 9999))
+            except Exception:
+                pass
+
+    if VIGEM_AVAILABLE and virtual_pad is not None:
+        try:
+            virtual_pad.register_notification(callback_function=rumble_callback)
+        except Exception as e:
+            print(f"[WARNING] Could not register haptic rumble callback: {e}")
+
     print(f"\nListening for F1 Controller UDP packets on {host}:{port}...")
     print("Games supported: F1 24/25, Assetto Corsa, Forza Horizon, EA WRC, iRacing, BeamNG.")
     print("Press Ctrl+C to exit.\n")
