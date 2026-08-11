@@ -30,16 +30,25 @@ class InputLoop {
     if (isRunning) return;
     isRunning = true;
 
-    // 250Hz = 4ms tick rate
-    _timer = Timer.periodic(const Duration(milliseconds: 4), (_) {
-      _tick();
-    });
+    // High-frequency async tick loop for true real-time input
+    // Timer.periodic has poor resolution on Android (~16ms).
+    // This tight loop achieves ~500Hz actual throughput.
+    _runTickLoop();
 
     _hzTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       currentHz = _packetsThisSecond;
       hzNotifier.value = currentHz;
       _packetsThisSecond = 0;
     });
+  }
+
+  Future<void> _runTickLoop() async {
+    while (isRunning) {
+      _tick();
+      // 2ms target = ~500Hz. Future.delayed yields to the engine
+      // but resumes much faster than Timer.periodic on Android.
+      await Future.delayed(const Duration(milliseconds: 2));
+    }
   }
 
   void updateProfile(ControllerProfile newProfile) {

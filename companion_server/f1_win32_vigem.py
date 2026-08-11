@@ -357,25 +357,49 @@ def main():
                 pad.right_trigger_float(value_float=throttle)
                 pad.left_trigger_float(value_float=brake)
 
-                if buttons & (1 << 7):
+                # Shoulder Buttons (Paddles / Bumpers)
+                if buttons & (1 << 7):   # Upshift -> RB
                     pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER)
-                if buttons & (1 << 8):
+                if buttons & (1 << 8):   # Downshift -> LB
                     pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER)
-                if buttons & (1 << 0):
+
+                # Face Buttons: Dedicated XYAB (bits 9-12) take priority,
+                # F1 toggles (bits 0-3) are fallback aliases for the same buttons
+                if buttons & (1 << 9) or buttons & (1 << 0):   # A button / DRS
                     pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
-                if buttons & (1 << 1):
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_Y)
-                if buttons & (1 << 2):
+                if buttons & (1 << 10) or buttons & (1 << 2):  # B button / Pit
                     pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
-                if buttons & (1 << 3):
+                if buttons & (1 << 11) or buttons & (1 << 3):  # X button / Radio
                     pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_X)
+                if buttons & (1 << 12) or buttons & (1 << 1):  # Y button / ERS
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_Y)
+
+                # Start & Back/Select
+                if buttons & (1 << 13):  # Start
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_START)
+                if buttons & (1 << 14):  # Select / Back
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK)
+
+                # D-Pad Hat Switch (8-way)
                 if dpad == 1:
                     pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)
+                elif dpad == 2:
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT)
                 elif dpad == 3:
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT)
+                elif dpad == 4:
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN)
                     pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT)
                 elif dpad == 5:
                     pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN)
+                elif dpad == 6:
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN)
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
                 elif dpad == 7:
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
+                elif dpad == 8:
+                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)
                     pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
 
                 pad.update()
@@ -397,12 +421,14 @@ def main():
                 brk_bar = f"{RED}{'█' * brk_fill}{RESET}{'░' * (20 - brk_fill)}"
 
                 # Button indicators
-                btn_drs   = f"{GREEN}DRS{RESET}"  if buttons & (1 << 0) else f"{DIM}drs{RESET}"
-                btn_ers   = f"{YELLOW}ERS{RESET}"  if buttons & (1 << 1) else f"{DIM}ers{RESET}"
-                btn_pit   = f"{RED}PIT{RESET}"    if buttons & (1 << 2) else f"{DIM}pit{RESET}"
-                btn_radio = f"{CYAN}RAD{RESET}"   if buttons & (1 << 3) else f"{DIM}rad{RESET}"
-                btn_up    = f"{WHITE}UP↑{RESET}"   if buttons & (1 << 7) else f"{DIM}up↑{RESET}"
-                btn_dn    = f"{WHITE}DN↓{RESET}"   if buttons & (1 << 8) else f"{DIM}dn↓{RESET}"
+                btn_a     = f"{GREEN} A {RESET}" if buttons & (1 << 9) or buttons & (1 << 0) else f"{DIM} a {RESET}"
+                btn_b     = f"{RED} B {RESET}"   if buttons & (1 << 10) or buttons & (1 << 2) else f"{DIM} b {RESET}"
+                btn_x     = f"{CYAN} X {RESET}"  if buttons & (1 << 11) or buttons & (1 << 3) else f"{DIM} x {RESET}"
+                btn_y     = f"{YELLOW} Y {RESET}" if buttons & (1 << 12) or buttons & (1 << 1) else f"{DIM} y {RESET}"
+                btn_start = f"{WHITE}ST{RESET}"   if buttons & (1 << 13) else f"{DIM}st{RESET}"
+                btn_sel   = f"{WHITE}BK{RESET}"   if buttons & (1 << 14) else f"{DIM}bk{RESET}"
+                btn_rb    = f"{WHITE}RB{RESET}"   if buttons & (1 << 7) else f"{DIM}rb{RESET}"
+                btn_lb    = f"{WHITE}LB{RESET}"   if buttons & (1 << 8) else f"{DIM}lb{RESET}"
 
                 # Dpad display
                 dpad_map = {0: "·", 1: "↑", 2: "↗", 3: "→", 4: "↘", 5: "↓", 6: "↙", 7: "←", 8: "↖"}
@@ -413,8 +439,9 @@ def main():
                       f"Thr [{thr_bar}] │ "
                       f"Brk [{brk_bar}]")
                 print(f"  {DIM}{total_packets:>5} pkts{RESET} │ "
-                      f"{btn_drs} {btn_ers} {btn_pit} {btn_radio} │ "
-                      f"Gear {btn_up} {btn_dn} │ "
+                      f"{btn_a}{btn_b}{btn_x}{btn_y} │ "
+                      f"{btn_lb} {btn_rb} │ "
+                      f"{btn_start} {btn_sel} │ "
                       f"D-Pad {dpad_str} │ "
                       f"Uptime {mins:02d}:{secs:02d}")
                 print_divider()
