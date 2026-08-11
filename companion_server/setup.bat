@@ -10,4 +10,5 @@ echo.
 echo Step 2: Starting the Virtual Controller Receiver...
 python f1_win32_vigem.py %*
 
+if "%1"=="--slave" exit /b
 pause

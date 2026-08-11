@@ -87,6 +87,7 @@ class HostReceiverEngine {
         _pythonProcess = await Process.start(
           'cmd.exe',
           ['/c', '${setupFile.absolute.path} --slave'],
+          workingDirectory: setupFile.parent.absolute.path,
           runInShell: true,
         );
         debugPrint('Launched Virtual Xbox Companion Server: ${_pythonProcess?.pid}');
