@@ -71,38 +71,44 @@ class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTi
   }
 
   double _smoothedGy = 0.0;
-  final double _emaAlpha = 0.25; // Smoothing factor (0.0 = max smooth, 1.0 = raw)
+  final double _emaAlpha = 0.6; // Higher = more responsive (0.0 = sluggish, 1.0 = raw)
 
   void _startGyroListening() {
     _gyroSubscription?.cancel();
     // Use accelerometer for absolute tilt angle (gravity based)
-    _gyroSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
+    _gyroSubscription = accelerometerEventStream(
+      samplingPeriod: const Duration(milliseconds: 4), // 250Hz to match input loop
+    ).listen((AccelerometerEvent event) {
       if (!mounted || !widget.gyroEnabled) return;
       
-      // A simple robust approach: mapping the Y acceleration to an angle
-      // 9.81 m/s^2 is 1G.
+      // Map Y-axis acceleration to tilt. 9.81 = 1G (90° tilt).
       double rawGy = event.y.clamp(-9.81, 9.81);
       
-      // Apply Exponential Moving Average (EMA) Filter for smoothing
+      // Apply Exponential Moving Average (EMA) filter
       _smoothedGy = (_emaAlpha * rawGy) + ((1.0 - _emaAlpha) * _smoothedGy);
       
+      // Normalize to -1.0 to 1.0 range
+      // Use a tilt range of ~45° (half of gravity) for full lock.
+      // This means tilting the phone ~45° gives full steering.
+      double normalizedGy = (_smoothedGy / 4.9).clamp(-1.0, 1.0);
+      
       // Apply deadzone
-      double normalizedGy = _smoothedGy / 9.81;
       if (normalizedGy.abs() < widget.gyroDeadzone) {
         normalizedGy = 0.0;
       } else {
-        // Rescale past deadzone
+        // Rescale past deadzone to maintain full range
         normalizedGy = (normalizedGy - (normalizedGy.sign * widget.gyroDeadzone)) / (1.0 - widget.gyroDeadzone);
       }
       
-      double angleRad = math.asin(normalizedGy);
-      double angleDeg = angleRad * (180.0 / math.pi) * widget.gyroSensitivity;
+      // Apply sensitivity multiplier and map directly to steering degrees
+      // With sensitivity=1.0, full tilt (45°) = full steering lock
+      double maxDeg = widget.rotationDegrees / 2.0;
+      double angleDeg = normalizedGy * maxDeg * widget.gyroSensitivity;
       
       if (widget.invertGyro) {
         angleDeg = -angleDeg;
       }
 
-      double maxDeg = widget.rotationDegrees / 2.0;
       double newAngle = angleDeg.clamp(-maxDeg, maxDeg);
       _setAngle(newAngle);
     });
