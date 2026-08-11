@@ -97,7 +97,7 @@ class _HostReceiverScreenState extends State<HostReceiverScreen> {
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'F1 Controllers connected on the local network (or USB tethered) will automatically stream inputs to this Windows host server. Incoming streams carrier player slots (P1..P4).',
+                      'The F1 Controller connected on the local network (or USB tethered) will automatically stream inputs to this Windows host server.',
                       style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ),
@@ -105,16 +105,13 @@ class _HostReceiverScreenState extends State<HostReceiverScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Grid of Connected Controller HUD Telemetry Cards
+            // Connected Controller HUD Telemetry Card
             Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.6,
-                children: List.generate(4, (slotIndex) {
-                  return _buildPlayerTelemetryCard(slotIndex);
-                }),
+              child: Center(
+                child: SizedBox(
+                  width: 500, // Constrain width for a clean look on desktop
+                  child: _buildPlayerTelemetryCard(0), // Only Player 1 (Index 0)
+                ),
               ),
             ),
           ],
@@ -144,17 +141,7 @@ class _HostReceiverScreenState extends State<HostReceiverScreen> {
             children: [
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: playerColor,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'P${playerIndex + 1}',
-                      style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12),
-                    ),
-                  ),
+                  const Icon(Icons.router, color: F1Theme.neonCyan, size: 18),
                   const SizedBox(width: 8),
                   Text(
                     isConnected ? (info.remoteIp) : 'DISCONNECTED',
@@ -268,7 +255,7 @@ class _HostReceiverScreenState extends State<HostReceiverScreen> {
             const Expanded(
               child: Center(
                 child: Text(
-                  'Waiting for P1 controller packet...',
+                  'Waiting for controller packet...',
                   style: TextStyle(color: Colors.white24, fontSize: 12),
                 ),
               ),
