@@ -32,8 +32,8 @@ class ConnectionManager {
 
   void sendReport(Uint8List report, String hostAddress, int port) {
     if (activeMode == TransportMode.udpRelay) {
-      // Use direct Kotlin UDP sender for minimal channel latency or SocketRelay
-      NativeHidBridge.sendUdpPacket(hostAddress, port, report);
+      // Use pure Dart UDP socket for zero platform-channel overhead and correct PONG matching
+      socketRelay.sendPacket(report);
     } else {
       NativeHidBridge.sendHidReport(report);
     }

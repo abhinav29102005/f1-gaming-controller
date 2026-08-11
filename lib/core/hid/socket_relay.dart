@@ -6,11 +6,21 @@ class SocketRelay {
   RawDatagramSocket? _socket;
   String hostAddress = '192.168.1.100';
   int hostPort = 9999;
-  bool isConnected = false;
-
+  
   double currentPingMs = 0.0;
   int packetsSent = 0;
   int _lastSentTimestamp = 0;
+  int _lastPongTimestamp = 0;
+
+  bool get isConnected {
+    if (_socket == null) return false;
+    int now = DateTime.now().millisecondsSinceEpoch;
+    // If we have sent packets, but haven't received a pong in 3 seconds, we are disconnected
+    if (packetsSent > 10 && (now - _lastPongTimestamp > 3000)) {
+      return false;
+    }
+    return true;
+  }
 
   Timer? _discoveryTimer;
   final StreamController<String> _discoveredHostsController = StreamController<String>.broadcast();
@@ -30,9 +40,8 @@ class SocketRelay {
           }
         }
       });
-      isConnected = true;
     } catch (e) {
-      isConnected = false;
+      _socket = null;
     }
   }
 
@@ -60,6 +69,7 @@ class SocketRelay {
     final text = String.fromCharCodes(datagram.data);
     if (text.startsWith('F1_HOST_PONG')) {
       int now = DateTime.now().millisecondsSinceEpoch;
+      _lastPongTimestamp = now;
       if (_lastSentTimestamp > 0) {
         currentPingMs = (now - _lastSentTimestamp).toDouble().clamp(1.0, 999.0);
       }
