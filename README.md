@@ -100,37 +100,53 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 
 This is the primary mode for competitive gaming. Sub-5ms input latency.
 
-#### Step 1: Start the PC Companion Server
+#### Step 1: Start the PC Server
 
-```bash
-# On your Windows/Linux PC:
-cd companion_server
-python f1_pc_relay.py
+On your Windows PC, navigate to the `companion_server` folder and **right-click `setup.bat` → Run as Administrator**:
+
 ```
+companion_server/
+├── setup.bat              ← Double-click this! (Run as Admin for firewall)
+├── f1_win32_vigem.py      ← The server (launched by setup.bat)
+└── setup.sh               ← Linux/macOS alternative
+```
+
+The setup script will automatically:
+1. ✅ Install Python dependencies (`vgamepad`)
+2. ✅ Open Windows Firewall for UDP port 9999
+3. ✅ Detect your **real** IP address (skips VirtualBox/VMware virtual adapters)
+4. ✅ Launch the Virtual Xbox Controller Server
 
 You should see:
 ```
-🏎️  F1 GAMING CONTROLLER — PC COMPANION RELAY SERVER 🏎️
-Listening on UDP port 9999 for multi-controller inputs...
-Auto-discovery active. Press Ctrl+C to stop.
+  [NETWORK] Your PC's IP Address: 192.168.43.50
+            Enter this IP in the mobile app's 'Host IP' field.
+
+  [FIREWALL] Checking Windows Firewall...
+  [OK] Firewall rule created for UDP port 9999.
+
+  [GAMEPAD] Initializing Virtual Xbox 360 Controller...
+  [OK] Virtual Xbox 360 Controller registered in Windows!
+
+  READY! Listening on UDP port 9999...
 ```
 
 #### Step 2: Connect Phone to PC
 
-Choose one of these methods:
-
 | Method | Latency | Setup |
 |--------|---------|-------|
-| **USB Tethering (Best)** | ~2-3ms | Enable USB tethering on phone → connect USB to PC |
-| **Same Wi-Fi Network** | ~5-15ms | Both devices on same router/hotspot |
-| **Phone Hotspot** | ~3-8ms | Phone creates hotspot → PC connects to it |
+| **Phone Hotspot (Best)** | ~3-5ms | Phone creates hotspot → PC connects to it |
+| **USB Tethering** | ~2-3ms | Enable USB tethering on phone → connect USB to PC |
+| **Same Wi-Fi Network** | ~5-15ms | Both devices on same router (**not** university/corporate Wi-Fi!) |
+
+> ⚠️ **University/Corporate Wi-Fi** networks have "Client Isolation" enabled, which blocks device-to-device communication. Use Phone Hotspot instead.
 
 #### Step 3: Configure in App
 
 1. Open the F1 Controller app on your phone
 2. Tap the **📡 Connection** icon in the top bar
 3. Select **UDP Socket Relay**
-4. The PC host IP will be auto-discovered, or enter it manually
+4. Enter the IP shown in the PC terminal (e.g., `192.168.43.50`)
 5. Tap **APPLY & SAVE CONNECTION**
 
 ### Option B: Bluetooth HID (No PC Software Needed)
@@ -148,34 +164,16 @@ Phone registers as a native Bluetooth gamepad — PC/Console sees it as a real c
 
 ## 🕹️ Virtual Xbox Controller (Windows — For Games)
 
-To make PC games (F1 24/25, Forza, Assetto Corsa) detect your phone as a real Xbox controller:
+The `setup.bat` script handles everything automatically! When you run it, your PC registers a Virtual Xbox 360 Controller that all racing games detect natively.
 
-### Step 1: Install ViGEmBus Driver (One-Time)
+### Prerequisites (One-Time)
+- **Python 3**: Download from https://python.org (check "Add Python to PATH")
+- **ViGEmBus Driver**: Installs automatically with `pip install vgamepad`, or manually from https://github.com/nefarius/ViGEmBus/releases
 
-Download and install from: https://github.com/nefarius/ViGEmBus/releases
+### Haptic Feedback (Game Vibrations → Phone)
+When a game triggers controller vibration (e.g., hitting curbs, losing traction), the vibration is sent over the network to your phone in real-time!
 
-### Step 2: Install Python Library
-
-```bash
-pip install vgamepad
-```
-
-### Step 3: Run the Virtual Controller Feeder
-
-```bash
-cd companion_server
-python f1_win32_vigem.py
-```
-
-You should see:
-```
-🏎️  WINDOWS VIRTUAL GAMEPAD RELAY (ViGEmBus / XInput Integration) 🏎️
-[OK] ViGEmBus integration ready! Initializing 4 Virtual Xbox Controllers...
-[OK] 4 Virtual Xbox 360 Controllers registered in Windows Device Manager.
-Listening for F1 Controller UDP packets on 0.0.0.0:9999...
-```
-
-### Step 4: Configure In-Game
+### Button Mapping (In-Game)
 
 Open your racing game and go to **Controller Settings**:
 
