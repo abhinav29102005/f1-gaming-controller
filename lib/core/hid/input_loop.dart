@@ -45,9 +45,9 @@ class InputLoop {
   Future<void> _runTickLoop() async {
     while (isRunning) {
       _tick();
-      // 2ms target = ~500Hz. Future.delayed yields to the engine
-      // but resumes much faster than Timer.periodic on Android.
-      await Future.delayed(const Duration(milliseconds: 2));
+      // 4ms target = ~250Hz. This is the optimal sweet spot.
+      // 500Hz (2ms) can cause UDP buffer overflow / packet loss over USB.
+      await Future.delayed(const Duration(milliseconds: 4));
     }
   }
 

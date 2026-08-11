@@ -250,6 +250,8 @@ def main():
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        # Increase UDP receive buffer to 1MB to prevent packet drop at high Hz
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024 * 1024)
     except Exception:
         pass
     sock.bind(("0.0.0.0", PORT))
