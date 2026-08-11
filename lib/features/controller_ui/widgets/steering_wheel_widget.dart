@@ -111,6 +111,7 @@ class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTi
 
       double newAngle = angleDeg.clamp(-maxDeg, maxDeg);
       _setAngle(newAngle);
+      widget.state.notifyListeners();
     });
   }
 

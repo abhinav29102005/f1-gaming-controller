@@ -24,7 +24,10 @@ class InputLoop {
     required this.state,
     required this.connectionManager,
     required this.profile,
-  });
+  }) {
+    // Instantly trigger a network transmit the exact millisecond the state changes
+    state.addListener(_tick);
+  }
 
   void start() {
     if (isRunning) return;

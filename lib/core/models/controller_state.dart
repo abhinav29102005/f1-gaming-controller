@@ -1,4 +1,6 @@
-class ControllerState {
+import 'package:flutter/foundation.dart';
+
+class ControllerState extends ChangeNotifier {
   double steering; // -1.0 (full left) to 1.0 (full right)
   double throttle; // 0.0 to 1.0
   double brake; // 0.0 to 1.0

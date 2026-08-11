@@ -36,15 +36,28 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
       behavior: HitTestBehavior.opaque,
       onPointerDown: (_) {
         _triggerHaptic();
-        setState(() => onChanged(true));
+        setState(() {
+          onChanged(true);
+          widget.state.notifyListeners();
+        });
       },
       onPointerUp: (_) {
         Future.delayed(const Duration(milliseconds: 50), () {
-          if (mounted) setState(() => onChanged(false));
+          if (mounted) {
+            setState(() {
+              onChanged(false);
+              widget.state.notifyListeners();
+            });
+          }
         });
       },
       onPointerCancel: (_) {
-        if (mounted) setState(() => onChanged(false));
+        if (mounted) {
+          setState(() {
+            onChanged(false);
+            widget.state.notifyListeners();
+          });
+        }
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 50),
@@ -97,15 +110,28 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
       behavior: HitTestBehavior.opaque,
       onPointerDown: (_) {
         _triggerHaptic();
-        setState(() => onChanged(true));
+        setState(() {
+          onChanged(true);
+          widget.state.notifyListeners();
+        });
       },
       onPointerUp: (_) {
         Future.delayed(const Duration(milliseconds: 50), () {
-          if (mounted) setState(() => onChanged(false));
+          if (mounted) {
+            setState(() {
+              onChanged(false);
+              widget.state.notifyListeners();
+            });
+          }
         });
       },
       onPointerCancel: (_) {
-        if (mounted) setState(() => onChanged(false));
+        if (mounted) {
+          setState(() {
+            onChanged(false);
+            widget.state.notifyListeners();
+          });
+        }
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 50),
@@ -157,7 +183,10 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
       behavior: HitTestBehavior.opaque,
       onPointerDown: (_) {
         _triggerHaptic();
-        setState(() => onChanged(!active));
+        setState(() {
+          onChanged(!active);
+          widget.state.notifyListeners();
+        });
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 100),

@@ -59,6 +59,7 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
         widget.state.currentGear++;
       }
       widget.state.paddleUpshift = true;
+              widget.state.notifyListeners();
     });
     _triggerHaptic();
     Future.delayed(const Duration(milliseconds: 100), () {
