@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/hid/host_receiver_engine.dart';
 import '../../core/theme/f1_theme.dart';
@@ -14,11 +15,47 @@ class _HostReceiverScreenState extends State<HostReceiverScreen> {
   final HostReceiverEngine _engine = HostReceiverEngine();
   StreamSubscription<int>? _packetSub;
   bool _isServerRunning = false;
+  String _localIp = 'Discovering IP...';
 
   @override
   void initState() {
     super.initState();
+    _fetchLocalIp();
     _startHostServer();
+  }
+
+  Future<void> _fetchLocalIp() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLinkLocal: false,
+      );
+      for (var interface in interfaces) {
+        // Prefer Wi-Fi or Ethernet over virtual adapters
+        if (interface.name.toLowerCase().contains('wi-fi') || 
+            interface.name.toLowerCase().contains('eth') ||
+            interface.name.toLowerCase().contains('wlan')) {
+          setState(() {
+            _localIp = interface.addresses.first.address;
+          });
+          return;
+        }
+      }
+      // Fallback to first available if no standard names match
+      if (interfaces.isNotEmpty) {
+        setState(() {
+          _localIp = interfaces.first.addresses.first.address;
+        });
+      } else {
+        setState(() {
+          _localIp = '127.0.0.1';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _localIp = 'Unknown IP';
+      });
+    }
   }
 
   void _startHostServer() async {
@@ -99,6 +136,33 @@ class _HostReceiverScreenState extends State<HostReceiverScreen> {
                     child: Text(
                       'The F1 Controller connected on the local network (or USB tethered) will automatically stream inputs to this Windows host server.',
                       style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Host IP Display
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.wifi, color: Colors.white54, size: 20),
+                  const SizedBox(width: 12),
+                  const Text('Host IP Address (For Manual Connection): ', style: TextStyle(color: Colors.white54, fontSize: 13)),
+                  Text(
+                    _localIp,
+                    style: const TextStyle(
+                      color: F1Theme.neonCyan,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'monospace',
+                      letterSpacing: 1.2,
                     ),
                   ),
                 ],
