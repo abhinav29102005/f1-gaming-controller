@@ -35,7 +35,10 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
       if (!_discoveredHosts.contains(hostIp)) {
         setState(() {
           _discoveredHosts.add(hostIp);
-          _ipController.text = hostIp;
+          // Auto-select the first discovered host if user still has the default IP
+          if (_discoveredHosts.length == 1 && _ipController.text == '192.168.1.100') {
+            _ipController.text = hostIp;
+          }
         });
       }
     });
