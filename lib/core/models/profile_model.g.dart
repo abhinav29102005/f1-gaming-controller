@@ -24,14 +24,17 @@ class ControllerProfileAdapter extends TypeAdapter<ControllerProfile> {
       gyroSensitivity: fields[8] as double,
       hapticFeedbackEnabled: fields[9] as bool,
       hardwareVolumePaddles: fields[10] as bool,
-      playerId: fields[11] as int,
+      playerId: fields[11] as int? ?? 0,
+      swapPaddleShifters: fields[12] as bool? ?? false,
+      invertGyro: fields[13] as bool? ?? false,
+      gyroDeadzone: fields[14] as double? ?? 0.02,
     );
   }
 
   @override
   void write(BinaryWriter writer, ControllerProfile obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -55,7 +58,13 @@ class ControllerProfileAdapter extends TypeAdapter<ControllerProfile> {
       ..writeByte(10)
       ..write(obj.hardwareVolumePaddles)
       ..writeByte(11)
-      ..write(obj.playerId);
+      ..write(obj.playerId)
+      ..writeByte(12)
+      ..write(obj.swapPaddleShifters)
+      ..writeByte(13)
+      ..write(obj.invertGyro)
+      ..writeByte(14)
+      ..write(obj.gyroDeadzone);
   }
 
   @override

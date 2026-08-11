@@ -36,6 +36,9 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen> {
       hapticFeedbackEnabled: widget.currentProfile.hapticFeedbackEnabled,
       hardwareVolumePaddles: widget.currentProfile.hardwareVolumePaddles,
       playerId: widget.currentProfile.playerId,
+      swapPaddleShifters: widget.currentProfile.swapPaddleShifters,
+      invertGyro: widget.currentProfile.invertGyro,
+      gyroDeadzone: widget.currentProfile.gyroDeadzone,
     );
   }
 
@@ -144,6 +147,14 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen> {
                   onChanged: (val) => setState(() => _profile.brakeDeadzone = val),
                   displayVal: '${(_profile.brakeDeadzone * 100).round()}%',
                 ),
+                _buildSliderTile(
+                  title: 'Gyro Tilt Deadzone',
+                  value: _profile.gyroDeadzone,
+                  min: 0.0,
+                  max: 0.20,
+                  onChanged: (val) => setState(() => _profile.gyroDeadzone = val),
+                  displayVal: '${(_profile.gyroDeadzone * 100).round()}%',
+                ),
               ],
             ),
           ),
@@ -206,10 +217,24 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen> {
                   activeTrackColor: F1Theme.neonGreen,
                 ),
                 SwitchListTile(
+                  title: const Text('Invert Gyro Steering', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text('Reverse left/right tilt direction', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                  value: _profile.invertGyro,
+                  onChanged: (val) => setState(() => _profile.invertGyro = val),
+                  activeTrackColor: F1Theme.neonGreen,
+                ),
+                SwitchListTile(
                   title: const Text('Hardware Volume Key Paddles', style: TextStyle(color: Colors.white)),
                   subtitle: const Text('Use Vol+ / Vol- physical keys for gear shift', style: TextStyle(color: Colors.white54, fontSize: 11)),
                   value: _profile.hardwareVolumePaddles,
                   onChanged: (val) => setState(() => _profile.hardwareVolumePaddles = val),
+                  activeTrackColor: F1Theme.neonCyan,
+                ),
+                SwitchListTile(
+                  title: const Text('Swap Paddle Shifters', style: TextStyle(color: Colors.white)),
+                  subtitle: const Text('Left = Upshift, Right = Downshift', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                  value: _profile.swapPaddleShifters,
+                  onChanged: (val) => setState(() => _profile.swapPaddleShifters = val),
                   activeTrackColor: F1Theme.neonCyan,
                 ),
               ],

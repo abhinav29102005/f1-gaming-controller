@@ -156,13 +156,18 @@ class _ControllerScreenState extends State<ControllerScreen> {
                               gyroEnabled: _profile.gyroSteeringEnabled,
                               gyroSensitivity: _profile.gyroSensitivity,
                               playerColor: playerColor,
+                              invertGyro: _profile.invertGyro,
+                              gyroDeadzone: _profile.gyroDeadzone,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          PaddleShiftersWidget(
-                            state: _state,
-                            hapticsEnabled: _profile.hapticFeedbackEnabled,
-                            volumeKeysEnabled: _profile.hardwareVolumePaddles,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: PaddleShiftersWidget(
+                              state: _state,
+                              hapticsEnabled: _profile.hapticFeedbackEnabled,
+                              volumeKeysEnabled: _profile.hardwareVolumePaddles,
+                              swapPaddleShifters: _profile.swapPaddleShifters,
+                            ),
                           ),
                         ],
                       ),

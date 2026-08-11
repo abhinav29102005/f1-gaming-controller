@@ -40,6 +40,15 @@ class ControllerProfile extends HiveObject {
   @HiveField(11)
   int playerId; // 0=P1 (Red), 1=P2 (Cyan), 2=P3 (Amber), 3=P4 (Purple)
 
+  @HiveField(12)
+  bool swapPaddleShifters;
+
+  @HiveField(13)
+  bool invertGyro;
+
+  @HiveField(14)
+  double gyroDeadzone;
+
   ControllerProfile({
     required this.id,
     required this.name,
@@ -53,6 +62,9 @@ class ControllerProfile extends HiveObject {
     this.hapticFeedbackEnabled = true,
     this.hardwareVolumePaddles = false,
     this.playerId = 0,
+    this.swapPaddleShifters = false,
+    this.invertGyro = false,
+    this.gyroDeadzone = 0.02,
   });
 
   static ControllerProfile defaultF1Preset() {
@@ -69,6 +81,9 @@ class ControllerProfile extends HiveObject {
       hapticFeedbackEnabled: true,
       hardwareVolumePaddles: true,
       playerId: 0,
+      swapPaddleShifters: false,
+      invertGyro: false,
+      gyroDeadzone: 0.02,
     );
   }
 
@@ -86,6 +101,9 @@ class ControllerProfile extends HiveObject {
       hapticFeedbackEnabled: true,
       hardwareVolumePaddles: false,
       playerId: 0,
+      swapPaddleShifters: false,
+      invertGyro: false,
+      gyroDeadzone: 0.04,
     );
   }
 
@@ -103,6 +121,9 @@ class ControllerProfile extends HiveObject {
       hapticFeedbackEnabled: true,
       hardwareVolumePaddles: false,
       playerId: 0,
+      swapPaddleShifters: false,
+      invertGyro: false,
+      gyroDeadzone: 0.05,
     );
   }
 }

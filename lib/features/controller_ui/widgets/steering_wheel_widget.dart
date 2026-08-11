@@ -10,6 +10,8 @@ class SteeringWheelWidget extends StatefulWidget {
   final bool gyroEnabled;
   final double gyroSensitivity;
   final Color playerColor;
+  final bool invertGyro;
+  final double gyroDeadzone;
 
   const SteeringWheelWidget({
     super.key,
@@ -18,6 +20,8 @@ class SteeringWheelWidget extends StatefulWidget {
     required this.gyroEnabled,
     required this.gyroSensitivity,
     required this.playerColor,
+    this.invertGyro = false,
+    this.gyroDeadzone = 0.02,
   });
 
   @override
@@ -55,7 +59,9 @@ class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTi
   @override
   void didUpdateWidget(covariant SteeringWheelWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.gyroEnabled != oldWidget.gyroEnabled) {
+    if (widget.gyroEnabled != oldWidget.gyroEnabled || 
+        widget.invertGyro != oldWidget.invertGyro || 
+        widget.gyroDeadzone != oldWidget.gyroDeadzone) {
       if (widget.gyroEnabled) {
         _startGyroListening();
       } else {
@@ -70,16 +76,25 @@ class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTi
     _gyroSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
       if (!mounted || !widget.gyroEnabled) return;
       
-      // In landscape mode, turning the phone like a wheel changes the Y and X axis gravity components.
-      // Y axis goes from -9.8 (full left) to +9.8 (full right) depending on orientation.
-      // We calculate the angle in degrees using atan2 of Y and X, or just simple Y mapping.
-      // For a phone held up like a steering wheel, X is roughly 0 to -9.8, Y goes -9.8 to 9.8
-      
       // A simple robust approach: mapping the Y acceleration to an angle
       // 9.81 m/s^2 is 1G.
       double gY = event.y.clamp(-9.81, 9.81);
-      double angleRad = math.asin(gY / 9.81);
+      
+      // Apply deadzone
+      double normalizedGy = gY / 9.81;
+      if (normalizedGy.abs() < widget.gyroDeadzone) {
+        normalizedGy = 0.0;
+      } else {
+        // Rescale past deadzone
+        normalizedGy = (normalizedGy - (normalizedGy.sign * widget.gyroDeadzone)) / (1.0 - widget.gyroDeadzone);
+      }
+      
+      double angleRad = math.asin(normalizedGy);
       double angleDeg = angleRad * (180.0 / math.pi) * widget.gyroSensitivity;
+      
+      if (widget.invertGyro) {
+        angleDeg = -angleDeg;
+      }
 
       double maxDeg = widget.rotationDegrees / 2.0;
       double newAngle = angleDeg.clamp(-maxDeg, maxDeg);

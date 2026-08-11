@@ -9,12 +9,14 @@ class PaddleShiftersWidget extends StatefulWidget {
   final ControllerState state;
   final bool hapticsEnabled;
   final bool volumeKeysEnabled;
+  final bool swapPaddleShifters;
 
   const PaddleShiftersWidget({
     super.key,
     required this.state,
     this.hapticsEnabled = true,
     this.volumeKeysEnabled = true,
+    this.swapPaddleShifters = false,
   });
 
   @override
@@ -44,9 +46,9 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
     _volumeSub = NativeHidBridge.volumeKeyStream.listen((event) {
       if (!mounted) return;
       if (event == 'VOLUME_UP_DOWN') {
-        _shiftUp();
+        widget.swapPaddleShifters ? _shiftDown() : _shiftUp();
       } else if (event == 'VOLUME_DOWN_DOWN') {
-        _shiftDown();
+        widget.swapPaddleShifters ? _shiftUp() : _shiftDown();
       }
     });
   }
@@ -104,10 +106,10 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Downshift Paddle (Left)
+          // Left Paddle
           Expanded(
             child: GestureDetector(
-              onTapDown: (_) => _shiftDown(),
+              onTapDown: (_) => widget.swapPaddleShifters ? _shiftUp() : _shiftDown(),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 80),
                 height: 52,
@@ -175,10 +177,10 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
               ],
             ),
           ),
-          // Upshift Paddle (Right)
+          // Right Paddle
           Expanded(
             child: GestureDetector(
-              onTapDown: (_) => _shiftUp(),
+              onTapDown: (_) => widget.swapPaddleShifters ? _shiftDown() : _shiftUp(),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 80),
                 height: 52,
