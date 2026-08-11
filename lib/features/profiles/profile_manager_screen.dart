@@ -216,6 +216,15 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen> {
                   onChanged: (val) => setState(() => _profile.gyroSteeringEnabled = val),
                   activeTrackColor: F1Theme.neonGreen,
                 ),
+                const SizedBox(height: 8),
+                _buildSliderTile(
+                  title: 'Gyro Sensitivity Multiplier',
+                  value: _profile.gyroSensitivity,
+                  min: 0.5,
+                  max: 3.0,
+                  onChanged: (val) => setState(() => _profile.gyroSensitivity = val),
+                  displayVal: '${_profile.gyroSensitivity.toStringAsFixed(1)}x',
+                ),
                 SwitchListTile(
                   title: const Text('Invert Gyro Steering', style: TextStyle(color: Colors.white)),
                   subtitle: const Text('Reverse left/right tilt direction', style: TextStyle(color: Colors.white54, fontSize: 11)),
