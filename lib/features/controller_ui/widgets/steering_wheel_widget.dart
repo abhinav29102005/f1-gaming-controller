@@ -26,7 +26,7 @@ class SteeringWheelWidget extends StatefulWidget {
 
 class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTickerProviderStateMixin {
   late final ValueNotifier<double> _angleNotifier;
-  StreamSubscription<GyroscopeEvent>? _gyroSubscription;
+  StreamSubscription<AccelerometerEvent>? _gyroSubscription;
 
   late AnimationController _springController;
   Animation<double>? _springAnimation;
@@ -66,14 +66,23 @@ class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTi
 
   void _startGyroListening() {
     _gyroSubscription?.cancel();
-    _gyroSubscription = gyroscopeEventStream().listen((GyroscopeEvent event) {
+    // Use accelerometer for absolute tilt angle (gravity based)
+    _gyroSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
       if (!mounted || !widget.gyroEnabled) return;
-      // Use Y-axis or Z-axis rotation depending on device landscape orientation
-      double delta = event.z * widget.gyroSensitivity * 2.5;
-      double newAngle = (_angleNotifier.value + delta).clamp(
-        -widget.rotationDegrees / 2.0,
-        widget.rotationDegrees / 2.0,
-      );
+      
+      // In landscape mode, turning the phone like a wheel changes the Y and X axis gravity components.
+      // Y axis goes from -9.8 (full left) to +9.8 (full right) depending on orientation.
+      // We calculate the angle in degrees using atan2 of Y and X, or just simple Y mapping.
+      // For a phone held up like a steering wheel, X is roughly 0 to -9.8, Y goes -9.8 to 9.8
+      
+      // A simple robust approach: mapping the Y acceleration to an angle
+      // 9.81 m/s^2 is 1G.
+      double gY = event.y.clamp(-9.81, 9.81);
+      double angleRad = math.asin(gY / 9.81);
+      double angleDeg = angleRad * (180.0 / math.pi) * widget.gyroSensitivity;
+
+      double maxDeg = widget.rotationDegrees / 2.0;
+      double newAngle = angleDeg.clamp(-maxDeg, maxDeg);
       _setAngle(newAngle);
     });
   }

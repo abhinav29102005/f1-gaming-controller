@@ -50,19 +50,18 @@ class _PedalSliderWidgetState extends State<PedalSliderWidget> {
     }
   }
 
-  void _onDragUpdate(DragUpdateDetails details, double height) {
+  void _onPanUpdate(Offset localPosition, double height) {
     // 0 pressure is at the bottom, 1.0 is at the top
-    double delta = -details.delta.dy / height;
-    _updatePressure(_pressureNotifier.value + delta);
+    double pressure = 1.0 - (localPosition.dy / height).clamp(0.0, 1.0);
+    _updatePressure(pressure);
   }
 
-  void _onTapDown(TapDownDetails details, double height) {
-    double pressure = 1.0 - (details.localPosition.dy / height).clamp(0.0, 1.0);
-    _updatePressure(pressure);
+  void _onPanDown(Offset localPosition, double height) {
+    _onPanUpdate(localPosition, height);
     _triggerHaptic();
   }
 
-  void _onTapUp() {
+  void _onPanEnd() {
     _updatePressure(0.0);
   }
 
@@ -87,11 +86,10 @@ class _PedalSliderWidgetState extends State<PedalSliderWidget> {
         builder: (context, constraints) {
           double totalHeight = constraints.maxHeight;
           return GestureDetector(
-            onVerticalDragUpdate: (details) => _onDragUpdate(details, totalHeight),
-            onVerticalDragEnd: (_) => _onTapUp(),
-            onTapDown: (details) => _onTapDown(details, totalHeight),
-            onTapUp: (_) => _onTapUp(),
-            onTapCancel: () => _onTapUp(),
+            onPanDown: (details) => _onPanDown(details.localPosition, totalHeight),
+            onPanUpdate: (details) => _onPanUpdate(details.localPosition, totalHeight),
+            onPanEnd: (_) => _onPanEnd(),
+            onPanCancel: () => _onPanEnd(),
             child: Container(
               decoration: F1Theme.carbonDecoration(
                 borderColor: _accentColor.withOpacity(0.4),
