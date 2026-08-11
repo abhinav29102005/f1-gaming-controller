@@ -32,17 +32,18 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
     required Color color,
     required Function(bool) onChanged,
   }) {
-    return GestureDetector(
-      onTapDown: (_) {
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) {
         _triggerHaptic();
         setState(() => onChanged(true));
       },
-      onTapUp: (_) {
+      onPointerUp: (_) {
         Future.delayed(const Duration(milliseconds: 50), () {
           if (mounted) setState(() => onChanged(false));
         });
       },
-      onTapCancel: () {
+      onPointerCancel: (_) {
         if (mounted) setState(() => onChanged(false));
       },
       child: AnimatedContainer(
@@ -92,17 +93,18 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
     required IconData icon,
     required Function(bool) onChanged,
   }) {
-    return GestureDetector(
-      onTapDown: (_) {
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) {
         _triggerHaptic();
         setState(() => onChanged(true));
       },
-      onTapUp: (_) {
+      onPointerUp: (_) {
         Future.delayed(const Duration(milliseconds: 50), () {
           if (mounted) setState(() => onChanged(false));
         });
       },
-      onTapCancel: () {
+      onPointerCancel: (_) {
         if (mounted) setState(() => onChanged(false));
       },
       child: AnimatedContainer(
@@ -151,8 +153,9 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
     required Color color,
     required Function(bool) onChanged,
   }) {
-    return GestureDetector(
-      onTapDown: (_) {
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) {
         _triggerHaptic();
         setState(() => onChanged(!active));
       },
