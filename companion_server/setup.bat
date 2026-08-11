@@ -8,6 +8,6 @@ pip install vgamepad
 
 echo.
 echo Step 2: Starting the Virtual Controller Receiver...
-python f1_win32_vigem.py
+python f1_win32_vigem.py %*
 
 pause

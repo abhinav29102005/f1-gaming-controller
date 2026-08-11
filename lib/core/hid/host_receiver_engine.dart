@@ -84,7 +84,7 @@ class HostReceiverEngine {
       if (setupFile.existsSync()) {
         _pythonProcess = await Process.start(
           'cmd.exe',
-          ['/c', setupFile.absolute.path],
+          ['/c', '${setupFile.absolute.path} --slave'],
           runInShell: true,
         );
         debugPrint('Launched Virtual Xbox Companion Server: ${_pythonProcess?.pid}');
@@ -152,6 +152,11 @@ class HostReceiverEngine {
       // Send Pong RTT
       final pongMsg = Uint8List.fromList('F1_HOST_PONG:$seq'.codeUnits);
       _socket?.send(pongMsg, datagram.address, datagram.port);
+
+      // Forward to local Python slave process
+      if (Platform.isWindows && _pythonProcess != null) {
+        _socket?.send(data, InternetAddress.loopbackIPv4, 9998);
+      }
 
       _packetStreamController.add(playerId);
     }

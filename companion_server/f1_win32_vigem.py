@@ -14,6 +14,7 @@ import socket
 import struct
 import sys
 import time
+import argparse
 
 try:
     vg = importlib.import_module("vgamepad")
@@ -22,11 +23,14 @@ except (ImportError, Exception):
     vg = None
     VIGEM_AVAILABLE = False
 
-
-HOST = "0.0.0.0"
-PORT = 9999
-
 def main():
+    parser = argparse.ArgumentParser(description="F1 Virtual Gamepad Relay")
+    parser.add_argument('--slave', action='store_true', help="Run as slave to Flutter UI")
+    args = parser.parse_args()
+
+    host = "127.0.0.1" if args.slave else "0.0.0.0"
+    port = 9998 if args.slave else 9999
+
     print("=" * 75)
     print("🏎️  WINDOWS VIRTUAL GAMEPAD RELAY (ViGEmBus / XInput Integration) 🏎️")
     print("=" * 75)
@@ -48,9 +52,9 @@ def main():
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((HOST, PORT))
+    sock.bind((host, port))
 
-    print(f"\nListening for F1 Controller UDP packets on {HOST}:{PORT}...")
+    print(f"\nListening for F1 Controller UDP packets on {host}:{port}...")
     print("Games supported: F1 24/25, Assetto Corsa, Forza Horizon, EA WRC, iRacing, BeamNG.")
     print("Press Ctrl+C to exit.\n")
 
@@ -60,8 +64,9 @@ def main():
 
             # Auto-Discovery response
             if data == b"F1_CONTROLLER_DISCOVER":
-                announce = f"F1_HOST_ANNOUNCE:{PORT}".encode("utf-8")
-                sock.sendto(announce, addr)
+                if not args.slave:
+                    announce = f"F1_HOST_ANNOUNCE:{port}".encode("utf-8")
+                    sock.sendto(announce, addr)
                 continue
 
             if len(data) < 10 or data[0] != 0xF1:
@@ -77,9 +82,10 @@ def main():
             throttle = (throttle_raw / 255.0)
             brake = (brake_raw / 255.0)
 
-            # Send Pong back to mobile device
-            pong = f"F1_HOST_PONG:{seq}".encode("utf-8")
-            sock.sendto(pong, addr)
+            # Send Pong back to mobile device only if not in slave mode
+            if not args.slave:
+                pong = f"F1_HOST_PONG:{seq}".encode("utf-8")
+                sock.sendto(pong, addr)
 
             # Feeds values to Windows Virtual Xbox 360 Controller
             if VIGEM_AVAILABLE and vg is not None and virtual_pad is not None:
