@@ -59,12 +59,15 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
         widget.state.currentGear++;
       }
       widget.state.paddleUpshift = true;
-              widget.state.notifyListeners();
+      widget.state.notifyListeners();
     });
     _triggerHaptic();
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
-        setState(() => widget.state.paddleUpshift = false);
+        setState(() {
+          widget.state.paddleUpshift = false;
+          widget.state.notifyListeners();
+        });
       }
     });
   }
@@ -75,11 +78,15 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
         widget.state.currentGear--;
       }
       widget.state.paddleDownshift = true;
+      widget.state.notifyListeners();
     });
     _triggerHaptic();
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
-        setState(() => widget.state.paddleDownshift = false);
+        setState(() {
+          widget.state.paddleDownshift = false;
+          widget.state.notifyListeners();
+        });
       }
     });
   }
@@ -109,8 +116,9 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
         children: [
           // Left Paddle
           Expanded(
-            child: GestureDetector(
-              onTapDown: (_) => widget.swapPaddleShifters ? _shiftUp() : _shiftDown(),
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (_) => widget.swapPaddleShifters ? _shiftUp() : _shiftDown(),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 80),
                 height: 52,
@@ -180,8 +188,9 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
           ),
           // Right Paddle
           Expanded(
-            child: GestureDetector(
-              onTapDown: (_) => widget.swapPaddleShifters ? _shiftDown() : _shiftUp(),
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (_) => widget.swapPaddleShifters ? _shiftDown() : _shiftUp(),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 80),
                 height: 52,

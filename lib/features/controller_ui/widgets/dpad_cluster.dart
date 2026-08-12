@@ -21,6 +21,7 @@ class _DPadClusterState extends State<DPadCluster> {
   void _setDpad(int val) {
     setState(() {
       widget.state.dpad = val;
+      widget.state.notifyListeners();
     });
     if (val != 0 && widget.hapticsEnabled) {
       Vibration.hasVibrator().then((has) {
@@ -31,10 +32,11 @@ class _DPadClusterState extends State<DPadCluster> {
 
   Widget _buildDpadBtn(int directionVal, IconData icon, String label) {
     bool active = widget.state.dpad == directionVal;
-    return GestureDetector(
-      onTapDown: (_) => _setDpad(directionVal),
-      onTapUp: (_) => _setDpad(0),
-      onTapCancel: () => _setDpad(0),
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) => _setDpad(directionVal),
+      onPointerUp: (_) => _setDpad(0),
+      onPointerCancel: (_) => _setDpad(0),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 60),
         width: 44,

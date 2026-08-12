@@ -48,6 +48,7 @@ class _PedalSliderWidgetState extends State<PedalSliderWidget> {
     } else {
       widget.state.brake = clamped;
     }
+    widget.state.notifyListeners();
   }
 
   void _onPanUpdate(Offset localPosition, double height) {
