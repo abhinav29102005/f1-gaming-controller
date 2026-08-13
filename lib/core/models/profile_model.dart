@@ -11,16 +11,16 @@ class ControllerProfile extends HiveObject {
   String name;
 
   @HiveField(2)
-  double steeringDeadzone; // e.g. 0.05 (5%)
+  double steeringDeadzone;
 
   @HiveField(3)
-  double throttleDeadzone; // e.g. 0.02
+  double throttleDeadzone;
 
   @HiveField(4)
-  double brakeDeadzone; // e.g. 0.02
+  double brakeDeadzone;
 
   @HiveField(5)
-  int steeringRotationDegrees; // 270, 540, 900
+  int steeringRotationDegrees;
 
   @HiveField(6)
   String linearityMode; // "linear", "exponential", "s_curve"
@@ -38,7 +38,7 @@ class ControllerProfile extends HiveObject {
   bool hardwareVolumePaddles;
 
   @HiveField(11)
-  int playerId; // 0=P1 (Red), 1=P2 (Cyan), 2=P3 (Amber), 3=P4 (Purple)
+  int playerId; // 0=P1, 1=P2, 2=P3, 3=P4
 
   @HiveField(12)
   bool swapPaddleShifters;
@@ -48,6 +48,9 @@ class ControllerProfile extends HiveObject {
 
   @HiveField(14)
   double gyroDeadzone;
+
+  @HiveField(15)
+  String layoutMode; // 'f1_racing' | 'tekken_7' | 'generic'
 
   ControllerProfile({
     required this.id,
@@ -65,7 +68,10 @@ class ControllerProfile extends HiveObject {
     this.swapPaddleShifters = false,
     this.invertGyro = false,
     this.gyroDeadzone = 0.02,
+    this.layoutMode = 'f1_racing',
   });
+
+  // ── Built-in Presets ──────────────────────────────────────────────
 
   static ControllerProfile defaultF1Preset() {
     return ControllerProfile(
@@ -84,6 +90,7 @@ class ControllerProfile extends HiveObject {
       swapPaddleShifters: false,
       invertGyro: false,
       gyroDeadzone: 0.02,
+      layoutMode: 'f1_racing',
     );
   }
 
@@ -104,6 +111,7 @@ class ControllerProfile extends HiveObject {
       swapPaddleShifters: false,
       invertGyro: false,
       gyroDeadzone: 0.04,
+      layoutMode: 'f1_racing',
     );
   }
 
@@ -124,6 +132,28 @@ class ControllerProfile extends HiveObject {
       swapPaddleShifters: false,
       invertGyro: false,
       gyroDeadzone: 0.05,
+      layoutMode: 'generic',
+    );
+  }
+
+  static ControllerProfile tekken7Preset() {
+    return ControllerProfile(
+      id: 'tekken7_preset',
+      name: 'Tekken 7 Fight Pad',
+      steeringDeadzone: 0.0,
+      throttleDeadzone: 0.0,
+      brakeDeadzone: 0.0,
+      steeringRotationDegrees: 360,
+      linearityMode: 'linear',
+      gyroSteeringEnabled: false,
+      gyroSensitivity: 1.0,
+      hapticFeedbackEnabled: true,
+      hardwareVolumePaddles: false,
+      playerId: 0,
+      swapPaddleShifters: false,
+      invertGyro: false,
+      gyroDeadzone: 0.0,
+      layoutMode: 'tekken_7',
     );
   }
 }

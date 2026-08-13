@@ -1,51 +1,66 @@
 @echo off
-title F1 Gaming Controller - Windows Setup
+title F1 Gaming Controller - PC Server
 color 0F
+setlocal
 
 echo.
-echo ========================================================
-echo   F1 GAMING CONTROLLER - WINDOWS PC SETUP
-echo ========================================================
-echo.
-echo   This script will:
-echo     1. Install required Python libraries (vgamepad)
-echo     2. Open Windows Firewall for UDP port 9999
-echo     3. Launch the Virtual Xbox Controller Server
-echo.
-echo --------------------------------------------------------
+echo ============================================================
+echo   F1 GAMING CONTROLLER - WINDOWS PC SERVER SETUP
+echo ============================================================
 echo.
 
-:: Check if Python is available
+:: Python check
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo   [ERROR] Python is not installed or not in PATH!
-    echo   Please install Python 3 from https://python.org
-    echo   Make sure to check "Add Python to PATH" during install.
+    echo   [ERROR] Python not found.
+    echo   Install Python 3 from https://python.org
+    echo   Check "Add Python to PATH" during install.
     echo.
-    pause
-    exit /b 1
+    pause & exit /b 1
 )
 
-echo   [1/3] Installing vgamepad library...
+:: Python version check
+for /f "tokens=2" %%v in ('python --version 2^>^&1') do set PYVER=%%v
+echo   Python %PYVER% found.
+echo.
+
+:: Install vgamepad
+echo   [1/2] Installing vgamepad...
 pip install vgamepad --quiet --disable-pip-version-check
-echo        Done.
-echo.
-
-echo   [2/3] Opening firewall for UDP port 9999...
-netsh advfirewall firewall add rule name="F1 Controller UDP 9999" dir=in action=allow protocol=UDP localport=9999 >nul 2>&1
 if errorlevel 1 (
-    echo        [WARNING] Could not open firewall. Try running as Administrator.
+    echo   [WARNING] vgamepad install failed.
+    echo   If ViGEmBus is not installed, get it from:
+    echo   https://github.com/nefarius/ViGEmBus/releases
 ) else (
-    echo        Done.
+    echo   vgamepad ready.
 )
 echo.
 
-echo   [3/3] Starting Virtual Xbox Controller Server...
+:: Firewall
+echo   [2/2] Opening firewall port 9999...
+netsh advfirewall firewall show rule name="F1 Controller UDP 9999" >nul 2>&1
+if errorlevel 1 (
+    netsh advfirewall firewall add rule name="F1 Controller UDP 9999" dir=in action=allow protocol=UDP localport=9999 >nul 2>&1
+    if errorlevel 1 (
+        echo   [WARNING] Firewall rule failed - run as Administrator if connection fails.
+    ) else (
+        echo   Firewall port 9999 opened.
+    )
+) else (
+    echo   Firewall port 9999 already open.
+)
 echo.
-echo ========================================================
+
+echo ============================================================
 echo.
+
+:: Check for --slave flag (launched from Flutter app)
+echo %* | findstr /i "slave" >nul 2>&1
+if not errorlevel 1 (
+    python f1_win32_vigem.py --slave
+    exit /b 0
+)
 
 python f1_win32_vigem.py
-
 echo.
 pause

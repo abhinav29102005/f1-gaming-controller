@@ -28,13 +28,15 @@ class ControllerProfileAdapter extends TypeAdapter<ControllerProfile> {
       swapPaddleShifters: fields[12] as bool? ?? false,
       invertGyro: fields[13] as bool? ?? false,
       gyroDeadzone: fields[14] as double? ?? 0.02,
+      // Field 15 added for layoutMode — defaults to 'f1_racing' for old saved profiles
+      layoutMode: fields[15] as String? ?? 'f1_racing',
     );
   }
 
   @override
   void write(BinaryWriter writer, ControllerProfile obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -64,7 +66,9 @@ class ControllerProfileAdapter extends TypeAdapter<ControllerProfile> {
       ..writeByte(13)
       ..write(obj.invertGyro)
       ..writeByte(14)
-      ..write(obj.gyroDeadzone);
+      ..write(obj.gyroDeadzone)
+      ..writeByte(15)
+      ..write(obj.layoutMode);
   }
 
   @override

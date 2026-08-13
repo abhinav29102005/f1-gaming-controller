@@ -11,6 +11,7 @@ import '../connectivity/connection_screen.dart';
 import '../connectivity/widgets/multiplayer_lobby_widget.dart';
 import '../host_mode/host_receiver_screen.dart';
 import '../profiles/profile_manager_screen.dart';
+import 'layouts/tekken_layout.dart';
 import 'widgets/dpad_cluster.dart';
 import 'widgets/f1_button_cluster.dart';
 import 'widgets/paddle_shifters.dart';
@@ -104,10 +105,78 @@ class _ControllerScreenState extends State<ControllerScreen> {
     );
   }
 
+  // ── F1 cockpit layout (original 5-column row) ─────────────────────
+  Widget _buildF1CockpitRow() {
+    final Color playerColor = F1Theme.getPlayerColor(_state.playerId);
+    return Row(
+      children: [
+        // Brake pedal
+        SizedBox(
+          width: 90,
+          child: PedalSliderWidget(
+            state: _state,
+            type: PedalType.brake,
+            hapticsEnabled: _profile.hapticFeedbackEnabled,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // D-Pad
+        DPadCluster(
+          state: _state,
+          hapticsEnabled: _profile.hapticFeedbackEnabled,
+        ),
+        const SizedBox(width: 8),
+        // Center: steering wheel + paddles
+        Expanded(
+          child: Column(
+            children: [
+              Expanded(
+                child: SteeringWheelWidget(
+                  state: _state,
+                  rotationDegrees: _profile.steeringRotationDegrees,
+                  gyroEnabled: _profile.gyroSteeringEnabled,
+                  gyroSensitivity: _profile.gyroSensitivity,
+                  playerColor: playerColor,
+                  invertGyro: _profile.invertGyro,
+                  gyroDeadzone: _profile.gyroDeadzone,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: PaddleShiftersWidget(
+                  state: _state,
+                  hapticsEnabled: _profile.hapticFeedbackEnabled,
+                  volumeKeysEnabled: _profile.hardwareVolumePaddles,
+                  swapPaddleShifters: _profile.swapPaddleShifters,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Button cluster
+        Expanded(
+          child: F1ButtonCluster(
+            state: _state,
+            hapticsEnabled: _profile.hapticFeedbackEnabled,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Throttle pedal
+        SizedBox(
+          width: 90,
+          child: PedalSliderWidget(
+            state: _state,
+            type: PedalType.throttle,
+            hapticsEnabled: _profile.hapticFeedbackEnabled,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    Color playerColor = F1Theme.getPlayerColor(_state.playerId);
-
     return Scaffold(
       backgroundColor: F1Theme.f1DarkBg,
       body: SafeArea(
@@ -120,77 +189,21 @@ class _ControllerScreenState extends State<ControllerScreen> {
                 state: _state,
                 profile: _profile,
                 inputLoop: _inputLoop,
+                layoutMode: _profile.layoutMode,
                 onPlayerSlotChanged: _onPlayerSlotChanged,
                 onOpenSettings: _openSettings,
                 onOpenConnection: _openConnection,
                 onOpenHostMode: _openHostMode,
               ),
               const SizedBox(height: 8),
-              // Main F1 Cockpit Controller Body
+              // Main controller body — switches on layoutMode
               Expanded(
-                child: Row(
-                  children: [
-                    // Left Column: Brake Pedal Slider + D-Pad
-                    SizedBox(
-                      width: 90,
-                      child: PedalSliderWidget(
-                        state: _state,
-                        type: PedalType.brake,
-                        hapticsEnabled: _profile.hapticFeedbackEnabled,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    DPadCluster(
-                      state: _state,
-                      hapticsEnabled: _profile.hapticFeedbackEnabled,
-                    ),
-                    const SizedBox(width: 8),
-                    // Center Column: Steering Wheel + Paddle Shifters
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: SteeringWheelWidget(
-                              state: _state,
-                              rotationDegrees: _profile.steeringRotationDegrees,
-                              gyroEnabled: _profile.gyroSteeringEnabled,
-                              gyroSensitivity: _profile.gyroSensitivity,
-                              playerColor: playerColor,
-                              invertGyro: _profile.invertGyro,
-                              gyroDeadzone: _profile.gyroDeadzone,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: PaddleShiftersWidget(
-                              state: _state,
-                              hapticsEnabled: _profile.hapticFeedbackEnabled,
-                              volumeKeysEnabled: _profile.hardwareVolumePaddles,
-                              swapPaddleShifters: _profile.swapPaddleShifters,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Right Column: F1 Button Cluster + Throttle Pedal Slider
-                    Expanded(
-                      child: F1ButtonCluster(
+                child: _profile.layoutMode == 'tekken_7'
+                    ? TekkenControllerLayout(
                         state: _state,
                         hapticsEnabled: _profile.hapticFeedbackEnabled,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 90,
-                      child: PedalSliderWidget(
-                        state: _state,
-                        type: PedalType.throttle,
-                        hapticsEnabled: _profile.hapticFeedbackEnabled,
-                      ),
-                    ),
-                  ],
-                ),
+                      )
+                    : _buildF1CockpitRow(),
               ),
             ],
           ),

@@ -1,29 +1,12 @@
 #!/usr/bin/env python3
 """
 F1 Gaming Controller — Windows Virtual Xbox Controller Server
-=============================================================
-Standalone terminal server. Shows everything in CMD — no GUI needed.
-
-Features:
-  - Lists ALL network interfaces with real vs virtual labels
-  - Auto-opens Windows Firewall for UDP port 9999
-  - Virtual Xbox 360 Controller via ViGEmBus
-  - Haptic feedback relay (game vibrations -> phone)
-  - Rich live telemetry display in terminal
-
-Requirements:
-  pip install vgamepad
+Requires: pip install vgamepad
 """
 
-import importlib
-import os
-import socket
-import struct
-import subprocess
-import sys
-import time
+import importlib, os, socket, select, struct, subprocess, sys, time, signal
 
-# ── ViGEmBus Import ──────────────────────────────────────────────────────────
+# ── ViGEmBus ─────────────────────────────────────────────────────────
 try:
     vg = importlib.import_module("vgamepad")
     VIGEM_AVAILABLE = True
@@ -31,436 +14,310 @@ except (ImportError, Exception):
     vg = None
     VIGEM_AVAILABLE = False
 
-# ── ANSI Color Helpers ───────────────────────────────────────────────────────
-RESET   = "\033[0m"
-BOLD    = "\033[1m"
-DIM     = "\033[2m"
-RED     = "\033[91m"
-GREEN   = "\033[92m"
-YELLOW  = "\033[93m"
-CYAN    = "\033[96m"
-WHITE   = "\033[97m"
-BG_RED  = "\033[41m"
-BG_GREEN = "\033[42m"
+# ── ANSI ─────────────────────────────────────────────────────────────
+RESET="\033[0m"; BOLD="\033[1m"; DIM="\033[2m"
+RED="\033[91m"; GREEN="\033[92m"; YELLOW="\033[93m"
+CYAN="\033[96m"; WHITE="\033[97m"
+BG_GREEN="\033[42m"
 
-VIRTUAL_KEYWORDS = [
-    "virtual", "veth", "wsl", "vmware", "tailscale", "loopback",
-    "hyper-v", "bluetooth", "isatap", "teredo", "pseudo", "tunnel",
-    "6to4", "miniport",
-]
+VIRTUAL_KEYWORDS = ["virtual","veth","wsl","vmware","tailscale","loopback",
+                    "hyper-v","bluetooth","isatap","teredo","pseudo","tunnel","6to4","miniport"]
 
-def cls():
-    os.system("cls" if os.name == "nt" else "clear")
+def cls(): os.system("cls" if os.name=="nt" else "clear")
 
-def is_virtual_adapter(name):
-    lower = name.lower()
-    return any(kw in lower for kw in VIRTUAL_KEYWORDS)
+def is_virtual(name):
+    return any(k in name.lower() for k in VIRTUAL_KEYWORDS)
 
-def get_all_interfaces():
-    """Get all IPv4 network interfaces using ipconfig on Windows, or socket on Linux."""
-    interfaces = []
-    
+def get_interfaces():
+    ifaces = []
     if os.name == "nt":
         try:
-            result = subprocess.run(
-                ["ipconfig"], capture_output=True, text=True, timeout=5, encoding="utf-8", errors="replace"
-            )
-            lines = result.stdout.split("\n")
-            current_adapter = None
-            for line in lines:
-                stripped = line.strip()
-                # Adapter header lines end with ":"
-                if not stripped.startswith("IPv4") and ":" in line and not line.startswith(" "):
-                    current_adapter = stripped.rstrip(":").strip()
-                    # Remove "Ethernet adapter " or "Wireless LAN adapter " prefix
-                    for prefix in ["Ethernet adapter ", "Wireless LAN adapter "]:
-                        if current_adapter.startswith(prefix):
-                            current_adapter = current_adapter[len(prefix):]
-                elif stripped.startswith("IPv4 Address") and current_adapter:
-                    ip = stripped.split(":")[-1].strip()
-                    if ip and not ip.startswith("127."):
-                        virtual = is_virtual_adapter(current_adapter)
-                        interfaces.append((current_adapter, ip, virtual))
-        except Exception:
-            pass
-    
-    # Fallback: socket method
-    if not interfaces:
+            r = subprocess.run(["ipconfig"], capture_output=True, text=True, timeout=5, encoding="utf-8", errors="replace")
+            adapter = None
+            for line in r.stdout.split("\n"):
+                s = line.strip()
+                if not s.startswith("IPv4") and ":" in line and not line.startswith(" "):
+                    adapter = s.rstrip(":").strip()
+                    for p in ["Ethernet adapter ","Wireless LAN adapter "]:
+                        if adapter.startswith(p): adapter = adapter[len(p):]
+                elif s.startswith("IPv4 Address") and adapter:
+                    ip = s.split(":")[-1].strip()
+                    if ip and not ip.startswith("127.") and not is_virtual(adapter):
+                        ifaces.append((adapter, ip))
+        except Exception: pass
+    if not ifaces:
         try:
-            hostname = socket.gethostname()
-            all_ips = socket.getaddrinfo(hostname, None, socket.AF_INET)
-            seen = set()
-            for info in all_ips:
+            for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
                 ip = info[4][0]
-                if ip not in seen and not ip.startswith("127."):
-                    seen.add(ip)
-                    virtual = ip.startswith("192.168.56.") or ip.startswith("172.16.")
-                    name = "VirtualBox" if ip.startswith("192.168.56.") else "Network"
-                    interfaces.append((name, ip, virtual))
-        except Exception:
-            pass
-    
-    return interfaces
-
-
-def get_best_ip(interfaces):
-    """Pick the best real (non-virtual) IP."""
-    for name, ip, virtual in interfaces:
-        if not virtual:
-            return ip
-    # Fallback: try outbound socket trick
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(2)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except Exception:
-        pass
-    return None
-
-
-def open_firewall(port):
-    """Open the Windows Firewall for UDP port."""
-    rule_name = f"F1 Controller UDP {port}"
-    status = {"opened": False, "already": False, "error": None}
-    try:
-        check = subprocess.run(
-            ["netsh", "advfirewall", "firewall", "show", "rule", f"name={rule_name}"],
-            capture_output=True, text=True, timeout=5
-        )
-        if "No rules match" not in check.stdout and rule_name in check.stdout:
-            status["already"] = True
-            status["opened"] = True
-            return status
-
-        result = subprocess.run(
-            ["netsh", "advfirewall", "firewall", "add", "rule",
-             f"name={rule_name}", "dir=in", "action=allow",
-             "protocol=UDP", f"localport={port}"],
-            capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            status["opened"] = True
-        else:
-            status["error"] = "Run setup.bat as Administrator"
-    except FileNotFoundError:
-        status["error"] = "netsh not found"
-    except Exception as e:
-        status["error"] = str(e)
-    return status
-
+                if not ip.startswith("127."):
+                    ifaces.append(("Network", ip))
+        except Exception: pass
+    return ifaces
 
 def print_header():
-    print(f"\n{BOLD}{'=' * 72}{RESET}")
+    print(f"\n{BOLD}{'='*68}{RESET}")
     print(f"{BOLD}   F1 GAMING CONTROLLER — WINDOWS VIRTUAL GAMEPAD SERVER{RESET}")
-    print(f"{BOLD}{'=' * 72}{RESET}\n")
+    print(f"{BOLD}{'='*68}{RESET}\n")
 
+def open_firewall(port):
+    rule = f"F1 Controller UDP {port}"
+    try:
+        c = subprocess.run(["netsh","advfirewall","firewall","show","rule",f"name={rule}"],
+                           capture_output=True, text=True, timeout=5)
+        if rule in c.stdout: return True
+        r = subprocess.run(["netsh","advfirewall","firewall","add","rule",
+                             f"name={rule}","dir=in","action=allow","protocol=UDP",f"localport={port}"],
+                           capture_output=True, text=True, timeout=10)
+        return r.returncode == 0
+    except Exception: return False
 
-def print_section(title):
-    print(f"  {BOLD}{CYAN}[{title}]{RESET}")
-
-
-def print_ok(msg):
-    print(f"  {GREEN}  ✓ {msg}{RESET}")
-
-
-def print_warn(msg):
-    print(f"  {YELLOW}  ⚠ {msg}{RESET}")
-
-
-def print_err(msg):
-    print(f"  {RED}  ✗ {msg}{RESET}")
-
-
-def print_network_table(interfaces, best_ip):
-    print()
-    print_section("NETWORK INTERFACES")
-    print()
-    print(f"    {'Adapter Name':<35} {'IP Address':<18} {'Status'}")
-    print(f"    {'─' * 35} {'─' * 18} {'─' * 15}")
-    for name, ip, virtual in interfaces:
-        if virtual:
-            tag = f"{DIM}VIRTUAL (skip){RESET}"
-        elif ip == best_ip:
-            tag = f"{GREEN}{BOLD}◀ USE THIS{RESET}"
-        else:
-            tag = f"{WHITE}Real{RESET}"
-        virt_marker = f"{DIM}" if virtual else ""
-        print(f"    {virt_marker}{name:<35}{RESET} {CYAN}{ip:<18}{RESET} {tag}")
-    
-    if not interfaces:
-        print_warn("No network interfaces found. Check your connection.")
-    print()
-
-
-def print_divider():
-    print(f"  {DIM}{'─' * 68}{RESET}")
-
+def make_socket(port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4 * 1024 * 1024)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 512 * 1024)
+    try: s.setsockopt(socket.IPPROTO_IP, socket.IP_TOS, 0xB8)
+    except Exception: pass
+    s.bind(("0.0.0.0", port))
+    s.setblocking(False)
+    return s
 
 def main():
     PORT = 9999
-    os.system("")  # Enable ANSI on Windows
+    SLAVE = "--slave" in sys.argv
+    os.system("")  # enable ANSI on Windows
 
     cls()
     print_header()
 
-    # ── 1. Network Discovery ─────────────────────────────────────────────
-    interfaces = get_all_interfaces()
-    best_ip = get_best_ip(interfaces)
-    print_network_table(interfaces, best_ip)
-
-    if best_ip:
-        print(f"  {BOLD}  ➤ Enter this IP in the mobile app:{RESET} {CYAN}{BOLD}{best_ip}{RESET}")
-    else:
-        print_err("Could not detect a usable IP. Run 'ipconfig' manually.")
+    # Network interfaces — clean list, no labels
+    ifaces = get_interfaces()
+    print(f"  {BOLD}{CYAN}[NETWORK INTERFACES]{RESET}\n")
+    print(f"    {'Adapter':<35} {'IP Address'}")
+    print(f"    {'─'*35} {'─'*18}")
+    for name, ip in ifaces:
+        print(f"    {name:<35} {CYAN}{ip}{RESET}")
+    if not ifaces:
+        print(f"    {YELLOW}No network interfaces found.{RESET}")
     print()
 
-    # ── 2. Firewall ──────────────────────────────────────────────────────
-    print_section("FIREWALL")
+    # Firewall
     fw = open_firewall(PORT)
-    if fw["already"]:
-        print_ok(f"UDP port {PORT} is already allowed through Windows Firewall.")
-    elif fw["opened"]:
-        print_ok(f"Firewall rule created: UDP port {PORT} open for incoming.")
-    else:
-        print_err(f"Could not open firewall: {fw['error']}")
-        print_warn("Try: Right-click setup.bat → Run as Administrator")
+    if fw: print(f"  {GREEN}  ✓ Firewall: UDP port {PORT} open{RESET}")
+    else:   print(f"  {YELLOW}  ⚠ Firewall: Run as Administrator if connection fails{RESET}")
     print()
 
-    # ── 3. Virtual Gamepad ───────────────────────────────────────────────
-    print_section("VIRTUAL XBOX CONTROLLER")
+    # Virtual gamepad
     virtual_pad = None
-    if not VIGEM_AVAILABLE or vg is None:
-        print_warn("'vgamepad' library not installed.")
-        print(f"      Run: {CYAN}pip install vgamepad{RESET}")
-        print(f"      Server will run in {YELLOW}telemetry-only{RESET} mode.\n")
+    if not VIGEM_AVAILABLE:
+        print(f"  {YELLOW}  ⚠ vgamepad not installed — run: pip install vgamepad{RESET}")
+        print(f"    Also install ViGEmBus: https://github.com/nefarius/ViGEmBus/releases\n")
     else:
         try:
             virtual_pad = vg.VX360Gamepad()
-            print_ok("Virtual Xbox 360 Controller registered in Windows!")
+            print(f"  {GREEN}  ✓ Virtual Xbox 360 Controller ready{RESET}\n")
         except Exception as e:
-            print_err(f"ViGEmBus init failed: {e}")
-            print_warn("Install ViGEmBus: https://github.com/nefarius/ViGEmBus/releases")
-    print()
+            print(f"  {RED}  ✗ ViGEmBus error: {e}{RESET}")
+            print(f"    Install ViGEmBus: https://github.com/nefarius/ViGEmBus/releases\n")
 
-    # ── 4. Create Socket ─────────────────────────────────────────────────
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    try:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        # Increase UDP receive buffer to 1MB to prevent packet drop at high Hz
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024 * 1024)
-    except Exception:
-        pass
-    sock.bind(("0.0.0.0", PORT))
-
-    # ── 5. Haptic Feedback Callback ──────────────────────────────────────
+    # Socket
+    sock = make_socket(PORT)
     mobile_addr = None
 
+    # Haptic callback
     if virtual_pad is not None:
-        def rumble_callback(client, target, large_motor, small_motor, led_number, user_data):
-            nonlocal mobile_addr
-            if mobile_addr is not None:
-                try:
-                    vib_msg = f"F1_VIB:{large_motor}:{small_motor}".encode("utf-8")
-                    sock.sendto(vib_msg, mobile_addr)
-                except Exception:
-                    pass
-        try:
-            virtual_pad.register_notification(callback_function=rumble_callback)
-            print_ok("Haptic feedback enabled (game vibrations → phone)")
-        except Exception:
-            print_warn("Haptic callback registration failed")
-        print()
+        def rumble_cb(client, target, large, small, led, user_data):
+            if mobile_addr and (large > 30 or small > 30):
+                try: sock.sendto(f"F1_VIB:{large}:{small}".encode(), mobile_addr)
+                except Exception: pass
+        try: virtual_pad.register_notification(callback_function=rumble_cb)
+        except Exception: pass
 
-    # ── 6. Ready Banner ──────────────────────────────────────────────────
-    print(f"  {BOLD}{'═' * 68}{RESET}")
-    if best_ip:
-        print(f"  {GREEN}{BOLD}  READY!{RESET} Listening on UDP port {CYAN}{PORT}{RESET}")
-        print(f"  {BOLD}  Phone App → Enter IP: {CYAN}{best_ip}{RESET} → Tap 'Apply & Save'")
-    else:
-        print(f"  {GREEN}{BOLD}  READY!{RESET} Listening on UDP port {CYAN}{PORT}{RESET}")
-        print(f"  {BOLD}  Run 'ipconfig' to find your IP, then enter it in the phone app.{RESET}")
-    print(f"  {BOLD}{'═' * 68}{RESET}")
-    print()
-    print(f"  {DIM}Waiting for controller connection... (Press Ctrl+C to quit){RESET}")
-    print()
+    print(f"  {BOLD}{'═'*68}{RESET}")
+    print(f"  {GREEN}{BOLD}  READY{RESET} — Listening on UDP :{PORT}")
+    print(f"  {BOLD}{'═'*68}{RESET}\n")
+    print(f"  {DIM}Waiting for connection... (Ctrl+C to quit){RESET}\n")
 
-    # ── Main Receive Loop ────────────────────────────────────────────────
-    packets_this_sec = 0
-    total_packets = 0
+    # ── State ──────────────────────────────────────────────────────────
+    pkt_total = 0
+    pkt_window = [0, 0, 0, 0]  # 4-sample rolling window for Hz
+    pkt_win_idx = 0
+    pkt_this_sec = 0
+    last_hz_time = time.time()
+    last_packet_time = 0.0
     last_report = time.time()
-    last_steer = 0.0
-    last_throttle = 0.0
-    last_brake = 0.0
-    last_dpad = 0
-    last_buttons = 0
     connected = False
-    connected_ip = ""
-    connection_time = None
-    discovery_count = 0
+    conn_time = None
+    disc_count = 0
+    sent_times = {}  # seq -> send_timestamp for RTT
+    ping_samples = []
+    ping_min = 999.0; ping_avg = 0.0; ping_max = 0.0
 
+    # Last telemetry values
+    tl = {"steer": 0.0, "thr": 0.0, "brk": 0.0, "dpad": 0, "buttons": 0}
+
+    def graceful_exit(*args):
+        print(f"\n  {YELLOW}Shutting down...{RESET}")
+        if virtual_pad:
+            try: virtual_pad.reset(); virtual_pad.update()
+            except Exception: pass
+        print(f"  Total packets: {pkt_total}")
+        if not SLAVE: 
+            try: input("  Press Enter to exit...")
+            except Exception: pass
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, graceful_exit)
+    signal.signal(signal.SIGINT, graceful_exit)
+    try: signal.signal(signal.SIGBREAK, graceful_exit)
+    except AttributeError: pass
+
+    # ── Main Loop (outer restart wrapper) ────────────────────────────
     while True:
         try:
-            data, addr = sock.recvfrom(1024)
-            now = time.time()
+            while True:
+                now = time.time()
 
-            # ── Auto-Discovery ───────────────────────────────────────────
-            if data == b"F1_CONTROLLER_DISCOVER":
-                announce = f"F1_HOST_ANNOUNCE:{PORT}".encode("utf-8")
-                sock.sendto(announce, addr)
-                discovery_count += 1
+                # Non-blocking receive with 10ms select timeout
+                readable, _, _ = select.select([sock], [], [], 0.01)
+                if not readable:
+                    # Hz tick
+                    if now - last_hz_time >= 1.0:
+                        pkt_window[pkt_win_idx % 4] = pkt_this_sec
+                        pkt_win_idx += 1
+                        pkt_this_sec = 0
+                        last_hz_time = now
+                    
+                    # Stale connection check
+                    if connected and (now - last_packet_time) > 5.0:
+                        connected = False
+                        print(f"\n  {YELLOW}Connection lost — waiting for reconnect...{RESET}\n")
+                    continue
+
+                data, addr = sock.recvfrom(1024)
+                now = time.time()
+
+                # Discovery
+                if data == b"F1_CONTROLLER_DISCOVER":
+                    disc_count += 1
+                    sock.sendto(f"F1_HOST_ANNOUNCE:{PORT}".encode(), addr)
+                    if not connected:
+                        print(f"  {CYAN}📡 Discovery #{disc_count} from {addr[0]}{RESET}")
+                    continue
+
+                # Binary HID packet
+                if len(data) < 10 or data[0] != 0xF1: continue
+
+                magic, player_id, seq, steer_raw, thr_raw, brk_raw, dpad, buttons = struct.unpack(">BBBhBBBH", data[:10])
+
+                steer = steer_raw / 32767.0
+                thr = thr_raw / 255.0
+                brk = brk_raw / 255.0
+                tl.update({"steer":steer, "thr":thr, "brk":brk, "dpad":dpad, "buttons":buttons})
+
+                pkt_total += 1
+                pkt_this_sec += 1
+                mobile_addr = addr
+                last_packet_time = now
+
                 if not connected:
-                    print(f"  {CYAN}📡 Discovery ping from {addr[0]}:{addr[1]} (#{discovery_count}){RESET}")
-                continue
+                    connected = True
+                    conn_time = now
+                    print(f"\n  {BG_GREEN}{BOLD} CONNECTED {RESET} {GREEN}{addr[0]}:{addr[1]}{RESET}\n")
 
-            # ── Validate ─────────────────────────────────────────────────
-            if len(data) < 10 or data[0] != 0xF1:
-                continue
+                # PONG with RTT tracking
+                sent_times[seq] = now
+                pong = f"F1_HOST_PONG:{seq}".encode()
+                sock.sendto(pong, addr)
+                # Clean up old sent_times (keep last 64)
+                if len(sent_times) > 64:
+                    oldest = sorted(sent_times.keys())[0]
+                    del sent_times[oldest]
 
-            # ── Unpack 10-byte HID report ────────────────────────────────
-            magic, player_id, seq, steer_raw, throttle_raw, brake_raw, dpad, buttons = struct.unpack(
-                ">BBBhBBBH", data[:10]
-            )
+                # Feed virtual gamepad
+                if virtual_pad is not None:
+                    pad = virtual_pad
+                    pad.reset()
+                    pad.left_joystick_float(x_value_float=steer, y_value_float=0.0)
+                    pad.right_trigger_float(value_float=thr)
+                    pad.left_trigger_float(value_float=brk)
+                    if buttons & (1 << 7):  pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER)
+                    if buttons & (1 << 8):  pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER)
+                    if buttons & (1 << 9)  or buttons & (1 << 0): pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
+                    if buttons & (1 << 10) or buttons & (1 << 2): pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
+                    if buttons & (1 << 11) or buttons & (1 << 3): pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_X)
+                    if buttons & (1 << 12) or buttons & (1 << 1): pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_Y)
+                    if buttons & (1 << 13): pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_START)
+                    if buttons & (1 << 14): pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK)
+                    dpad_map = {
+                        1: [vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP],
+                        2: [vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT],
+                        3: [vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT],
+                        4: [vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT],
+                        5: [vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN],
+                        6: [vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT],
+                        7: [vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT],
+                        8: [vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP, vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT],
+                    }
+                    for btn in dpad_map.get(dpad, []):
+                        pad.press_button(btn)
+                    pad.update()
 
-            steer = steer_raw / 32767.0
-            throttle = throttle_raw / 255.0
-            brake = brake_raw / 255.0
+                # Live telemetry every 1s
+                if now - last_report >= 1.0:
+                    hz_avg = int(sum(pkt_window) / max(1, min(4, pkt_win_idx)))
+                    elapsed = int(now - conn_time) if conn_time else 0
+                    m, s_val = divmod(elapsed, 60)
 
-            last_steer = steer
-            last_throttle = throttle
-            last_brake = brake
-            last_dpad = dpad
-            last_buttons = buttons
-            packets_this_sec += 1
-            total_packets += 1
-            mobile_addr = addr
+                    steer_pos = int((tl["steer"] + 1) * 15)
+                    steer_bar = "░" * steer_pos + "█" + "░" * (30 - steer_pos)
+                    thr_fill = int(tl["thr"] * 20)
+                    brk_fill = int(tl["brk"] * 20)
+                    thr_bar = f"{GREEN}{'█'*thr_fill}{RESET}{'░'*(20-thr_fill)}"
+                    brk_bar = f"{RED}{'█'*brk_fill}{RESET}{'░'*(20-brk_fill)}"
 
-            if not connected:
-                connected = True
-                connected_ip = addr[0]
-                connection_time = now
-                print()
-                print(f"  {BG_GREEN}{BOLD} CONNECTED {RESET} {GREEN}Controller from {CYAN}{addr[0]}:{addr[1]}{RESET}")
-                print(f"  {DIM}Telemetry streaming... gauges updating every second.{RESET}")
-                print()
+                    b = tl["buttons"]
+                    ba  = f"{GREEN} A {RESET}"  if b&(1<<9)  or b&(1<<0) else f"{DIM} a {RESET}"
+                    bb  = f"{RED} B {RESET}"    if b&(1<<10) or b&(1<<2) else f"{DIM} b {RESET}"
+                    bx  = f"{CYAN} X {RESET}"   if b&(1<<11) or b&(1<<3) else f"{DIM} x {RESET}"
+                    by_ = f"{YELLOW} Y {RESET}"  if b&(1<<12) or b&(1<<1) else f"{DIM} y {RESET}"
+                    brb = f"{WHITE}RB{RESET}" if b&(1<<7) else f"{DIM}rb{RESET}"
+                    blb = f"{WHITE}LB{RESET}" if b&(1<<8) else f"{DIM}lb{RESET}"
+                    bst = f"{WHITE}ST{RESET}" if b&(1<<13) else f"{DIM}st{RESET}"
+                    bse = f"{WHITE}BK{RESET}" if b&(1<<14) else f"{DIM}bk{RESET}"
+                    dpad_char = {0:"·",1:"↑",2:"↗",3:"→",4:"↘",5:"↓",6:"↙",7:"←",8:"↖"}.get(tl["dpad"],"·")
 
-            # ── Heartbeat PONG ───────────────────────────────────────────
-            pong = f"F1_HOST_PONG:{seq}".encode("utf-8")
-            sock.sendto(pong, addr)
+                    ping_str = f"{CYAN}{ping_avg:.0f}ms{RESET}" if ping_avg > 0 else f"{DIM}--ms{RESET}"
 
-            # ── Feed Virtual Xbox Controller ─────────────────────────────
-            if virtual_pad is not None:
-                pad = virtual_pad
-                pad.reset()
-                pad.left_joystick_float(x_value_float=steer, y_value_float=0.0)
-                pad.right_trigger_float(value_float=throttle)
-                pad.left_trigger_float(value_float=brake)
+                    print(f"  {CYAN}{hz_avg:>3}Hz{RESET} {ping_str} │ "
+                          f"Steer [{steer_bar}] {tl['steer']:+.2f} │ "
+                          f"Thr [{thr_bar}] │ Brk [{brk_bar}]")
+                    print(f"  {DIM}{pkt_total:>6} pkts{RESET} │ "
+                          f"{ba}{bb}{bx}{by_} │ {blb} {brb} │ {bst} {bse} │ "
+                          f"D:{dpad_char} │ {m:02d}:{s_val:02d}")
+                    print(f"  {DIM}{'─'*66}{RESET}")
+                    last_report = now
 
-                # Shoulder Buttons (Paddles / Bumpers)
-                if buttons & (1 << 7):   # Upshift -> RB
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER)
-                if buttons & (1 << 8):   # Downshift -> LB
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER)
-
-                # Face Buttons: Dedicated XYAB (bits 9-12) take priority,
-                # F1 toggles (bits 0-3) are fallback aliases for the same buttons
-                if buttons & (1 << 9) or buttons & (1 << 0):   # A button / DRS
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
-                if buttons & (1 << 10) or buttons & (1 << 2):  # B button / Pit
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
-                if buttons & (1 << 11) or buttons & (1 << 3):  # X button / Radio
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_X)
-                if buttons & (1 << 12) or buttons & (1 << 1):  # Y button / ERS
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_Y)
-
-                # Start & Back/Select
-                if buttons & (1 << 13):  # Start
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_START)
-                if buttons & (1 << 14):  # Select / Back
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK)
-
-                # D-Pad Hat Switch (8-way)
-                if dpad == 1:
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)
-                elif dpad == 2:
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT)
-                elif dpad == 3:
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT)
-                elif dpad == 4:
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN)
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT)
-                elif dpad == 5:
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN)
-                elif dpad == 6:
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN)
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
-                elif dpad == 7:
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
-                elif dpad == 8:
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP)
-                    pad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT)
-
-                pad.update()
-
-            # ── Live Telemetry Print ─────────────────────────────────────
-            if now - last_report >= 1.0:
-                hz = packets_this_sec
-                elapsed = int(now - connection_time) if connection_time else 0
-                mins, secs = divmod(elapsed, 60)
-
-                # Build visual bars
-                steer_pos = int((last_steer + 1) * 15)
-                steer_bar = "░" * steer_pos + "█" + "░" * (30 - steer_pos)
-
-                thr_fill = int(last_throttle * 20)
-                thr_bar = f"{GREEN}{'█' * thr_fill}{RESET}{'░' * (20 - thr_fill)}"
-
-                brk_fill = int(last_brake * 20)
-                brk_bar = f"{RED}{'█' * brk_fill}{RESET}{'░' * (20 - brk_fill)}"
-
-                # Button indicators
-                btn_a     = f"{GREEN} A {RESET}" if buttons & (1 << 9) or buttons & (1 << 0) else f"{DIM} a {RESET}"
-                btn_b     = f"{RED} B {RESET}"   if buttons & (1 << 10) or buttons & (1 << 2) else f"{DIM} b {RESET}"
-                btn_x     = f"{CYAN} X {RESET}"  if buttons & (1 << 11) or buttons & (1 << 3) else f"{DIM} x {RESET}"
-                btn_y     = f"{YELLOW} Y {RESET}" if buttons & (1 << 12) or buttons & (1 << 1) else f"{DIM} y {RESET}"
-                btn_start = f"{WHITE}ST{RESET}"   if buttons & (1 << 13) else f"{DIM}st{RESET}"
-                btn_sel   = f"{WHITE}BK{RESET}"   if buttons & (1 << 14) else f"{DIM}bk{RESET}"
-                btn_rb    = f"{WHITE}RB{RESET}"   if buttons & (1 << 7) else f"{DIM}rb{RESET}"
-                btn_lb    = f"{WHITE}LB{RESET}"   if buttons & (1 << 8) else f"{DIM}lb{RESET}"
-
-                # Dpad display
-                dpad_map = {0: "·", 1: "↑", 2: "↗", 3: "→", 4: "↘", 5: "↓", 6: "↙", 7: "←", 8: "↖"}
-                dpad_str = dpad_map.get(last_dpad, "·")
-
-                print(f"  {CYAN}{hz:>3} Hz{RESET} │ "
-                      f"Steer [{steer_bar}] {last_steer:+.2f} │ "
-                      f"Thr [{thr_bar}] │ "
-                      f"Brk [{brk_bar}]")
-                print(f"  {DIM}{total_packets:>5} pkts{RESET} │ "
-                      f"{btn_a}{btn_b}{btn_x}{btn_y} │ "
-                      f"{btn_lb} {btn_rb} │ "
-                      f"{btn_start} {btn_sel} │ "
-                      f"D-Pad {dpad_str} │ "
-                      f"Uptime {mins:02d}:{secs:02d}")
-                print_divider()
-
-                packets_this_sec = 0
-                last_report = now
+                # Hz tick
+                if now - last_hz_time >= 1.0:
+                    pkt_window[pkt_win_idx % 4] = pkt_this_sec
+                    pkt_win_idx += 1
+                    pkt_this_sec = 0
+                    last_hz_time = now
 
         except KeyboardInterrupt:
-            print(f"\n  {YELLOW}Shutting down F1 Virtual Gamepad Server.{RESET}")
-            if virtual_pad is not None:
-                virtual_pad.reset()
-                virtual_pad.update()
-            print(f"  Total packets received: {total_packets}")
-            sys.exit(0)
-        except Exception:
-            pass
-
+            graceful_exit()
+        except Exception as e:
+            print(f"\n  {RED}Server error: {e} — restarting in 1s...{RESET}")
+            time.sleep(1)
+            try:
+                sock.close()
+                sock = make_socket(PORT)
+                connected = False
+                mobile_addr = None
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     main()
