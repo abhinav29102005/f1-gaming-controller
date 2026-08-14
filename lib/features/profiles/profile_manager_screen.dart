@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/models/profile_model.dart';
+import '../../core/services/feedback_service.dart';
 import '../../core/theme/f1_theme.dart';
 
 class ProfileManagerScreen extends StatefulWidget {
@@ -25,11 +27,17 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen>
   @override
   void initState() {
     super.initState();
+    // Enforce Portrait Mode for Calibration & Tuning
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
     _profile = _copyProfile(widget.currentProfile);
 
     // Start on the tab that matches the current layout
     int initialTab = 0;
-    if (_profile.layoutMode == 'tekken_7') initialTab = 1;
+    if (_profile.layoutMode == 'tekken_8' || _profile.layoutMode == 'tekken_7') initialTab = 1;
     if (_profile.layoutMode == 'generic') initialTab = 2;
 
     _tabController = TabController(length: 3, vsync: this, initialIndex: initialTab);
@@ -37,6 +45,11 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen>
 
   @override
   void dispose() {
+    // Restore Landscape Mode for Controller Layout
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     _tabController.dispose();
     super.dispose();
   }
@@ -351,7 +364,7 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen>
           child: ElevatedButton.icon(
             icon: const Icon(Icons.sports_martial_arts, size: 20),
             label: const Text(
-              'LOAD TEKKEN 7 LAYOUT',
+              'LOAD TEKKEN 8 OFFICIAL LAYOUT',
               style: TextStyle(
                   fontWeight: FontWeight.w900,
                   fontSize: 14,
@@ -364,24 +377,63 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen>
                   borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () =>
-                _applyPreset(ControllerProfile.tekken7Preset()),
+                _applyPreset(ControllerProfile.tekken8Preset()),
           ),
         ),
         const SizedBox(height: 16),
 
-        // Haptics toggle
+        // Haptics & Sound feedback toggle container
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.all(12),
           decoration: F1Theme.carbonDecoration(),
-          child: SwitchListTile(
-            title: const Text('Haptic Feedback',
-                style: TextStyle(color: Colors.white)),
-            subtitle: const Text('Vibrate on every button press',
-                style: TextStyle(color: Colors.white54, fontSize: 11)),
-            value: _profile.hapticFeedbackEnabled,
-            onChanged: (v) =>
-                setState(() => _profile.hapticFeedbackEnabled = v),
-            activeTrackColor: F1Theme.f1Red,
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: const Text('Ultra Haptic Feedback',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                subtitle: const Text('Powerful physical vibration drive (0-255 amplitude)',
+                    style: TextStyle(color: Colors.white54, fontSize: 11)),
+                value: _profile.hapticFeedbackEnabled,
+                onChanged: (v) =>
+                    setState(() => _profile.hapticFeedbackEnabled = v),
+                activeTrackColor: F1Theme.f1Red,
+              ),
+              const Divider(color: Colors.white12),
+              SwitchListTile(
+                title: const Text('Mobile Speaker Sound Engine',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                subtitle: const Text('Synthesized audio clicks & strike tones via speaker',
+                    style: TextStyle(color: Colors.white54, fontSize: 11)),
+                value: _profile.soundFeedbackEnabled,
+                onChanged: (v) =>
+                    setState(() => _profile.soundFeedbackEnabled = v),
+                activeTrackColor: F1Theme.neonCyan,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => FeedbackService.tekkenStrike(),
+                    icon: const Icon(Icons.flash_on, size: 16),
+                    label: const Text('TEST STRIKE'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: F1Theme.electricAmber,
+                      foregroundColor: Colors.black,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => FeedbackService.heatSmash(),
+                    icon: const Icon(Icons.whatshot, size: 16),
+                    label: const Text('TEST HEAT'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6B00),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
@@ -733,7 +785,7 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen>
             ),
             Tab(
               icon: Icon(Icons.sports_martial_arts, size: 18),
-              text: 'TEKKEN 7',
+              text: 'TEKKEN 8',
             ),
             Tab(
               icon: Icon(Icons.gamepad, size: 18),

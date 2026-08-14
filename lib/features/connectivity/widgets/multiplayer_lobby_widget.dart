@@ -44,11 +44,11 @@ class MultiplayerLobbyWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color playerColor = F1Theme.getPlayerColor(state.playerId);
-    final bool isTekken = layoutMode == 'tekken_7';
+    final bool isTekken = layoutMode == 'tekken_8' || layoutMode == 'tekken_7';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: F1Theme.glassDecoration(borderColor: playerColor),
+      decoration: F1Theme.glassDecoration(borderColor: isTekken ? const Color(0xFFFF6B00) : playerColor),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -57,14 +57,14 @@ class MultiplayerLobbyWidget extends StatelessWidget {
             children: [
               Icon(
                 isTekken ? Icons.sports_martial_arts : Icons.sports_motorsports,
-                color: isTekken ? Colors.white : playerColor,
+                color: isTekken ? const Color(0xFFFF6B00) : playerColor,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
-                isTekken ? 'TEKKEN 7' : 'F1 CONTROLLER',
+                isTekken ? 'TEKKEN 8' : 'F1 CONTROLLER',
                 style: TextStyle(
-                  color: isTekken ? Colors.white : playerColor,
+                  color: isTekken ? const Color(0xFFFF6B00) : playerColor,
                   fontWeight: FontWeight.w900,
                   fontSize: 16,
                   letterSpacing: 2.0,
@@ -73,7 +73,7 @@ class MultiplayerLobbyWidget extends StatelessWidget {
               ),
             ],
           ),
-          // Live Hz & Ping & Telemetry Monitor + Mode Switchers
+          // Live Hz & Ping & Telemetry Monitor + Sync Badge + Mode Switchers
           Row(
             children: [
               ValueListenableBuilder<int>(
@@ -86,10 +86,35 @@ class MultiplayerLobbyWidget extends StatelessWidget {
 
                   return Row(
                     children: [
+                      // Full Sync Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: F1Theme.neonCyan.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: F1Theme.neonCyan),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.sync_lock, color: F1Theme.neonCyan, size: 12),
+                            SizedBox(width: 4),
+                            Text(
+                              'FULL SYNC 100%',
+                              style: TextStyle(
+                                color: F1Theme.neonCyan,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       // Connection Status Badge
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        margin: const EdgeInsets.only(right: 8),
+                        margin: const EdgeInsets.only(right: 6),
                         decoration: BoxDecoration(
                           color: isConnected
                               ? F1Theme.neonGreen.withOpacity(0.2)
@@ -126,7 +151,7 @@ class MultiplayerLobbyWidget extends StatelessWidget {
                       // Hz Monitor
                       Container(
                         padding:
-                            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.black45,
                           borderRadius: BorderRadius.circular(6),
@@ -153,7 +178,7 @@ class MultiplayerLobbyWidget extends StatelessWidget {
                       // Ping Badge
                       Container(
                         padding:
-                            const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.black45,
                           borderRadius: BorderRadius.circular(6),

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:vibration/vibration.dart';
 import '../../../core/hid/native_hid_bridge.dart';
 import '../../../core/models/controller_state.dart';
+import '../../../core/services/feedback_service.dart';
 import '../../../core/theme/f1_theme.dart';
 
 class PaddleShiftersWidget extends StatefulWidget {
@@ -59,14 +59,14 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
         widget.state.currentGear++;
       }
       widget.state.paddleUpshift = true;
-      widget.state.notifyListeners();
+      widget.state.notifyStateChanged();
     });
     _triggerHaptic();
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
         setState(() {
           widget.state.paddleUpshift = false;
-          widget.state.notifyListeners();
+          widget.state.notifyStateChanged();
         });
       }
     });
@@ -78,14 +78,14 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
         widget.state.currentGear--;
       }
       widget.state.paddleDownshift = true;
-      widget.state.notifyListeners();
+      widget.state.notifyStateChanged();
     });
     _triggerHaptic();
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
         setState(() {
           widget.state.paddleDownshift = false;
-          widget.state.notifyListeners();
+          widget.state.notifyStateChanged();
         });
       }
     });
@@ -93,9 +93,7 @@ class _PaddleShiftersWidgetState extends State<PaddleShiftersWidget> {
 
   void _triggerHaptic() {
     if (widget.hapticsEnabled) {
-      Vibration.hasVibrator().then((has) {
-        if (has == true) Vibration.vibrate(duration: 25, amplitude: 200);
-      });
+      FeedbackService.gearShift();
     }
   }
 

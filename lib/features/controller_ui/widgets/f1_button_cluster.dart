@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:vibration/vibration.dart';
 import '../../../core/models/controller_state.dart';
+import '../../../core/services/feedback_service.dart';
 import '../../../core/theme/f1_theme.dart';
 
 class F1ButtonCluster extends StatefulWidget {
@@ -20,9 +20,7 @@ class F1ButtonCluster extends StatefulWidget {
 class _F1ButtonClusterState extends State<F1ButtonCluster> {
   void _triggerHaptic() {
     if (widget.hapticsEnabled) {
-      Vibration.hasVibrator().then((has) {
-        if (has == true) Vibration.vibrate(duration: 15, amplitude: 150);
-      });
+      FeedbackService.heavyImpact();
     }
   }
 
@@ -38,7 +36,7 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
         _triggerHaptic();
         setState(() {
           onChanged(true);
-          widget.state.notifyListeners();
+          widget.state.notifyStateChanged();
         });
       },
       onPointerUp: (_) {
@@ -46,7 +44,7 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
           if (mounted) {
             setState(() {
               onChanged(false);
-              widget.state.notifyListeners();
+              widget.state.notifyStateChanged();
             });
           }
         });
@@ -55,7 +53,7 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
         if (mounted) {
           setState(() {
             onChanged(false);
-            widget.state.notifyListeners();
+            widget.state.notifyStateChanged();
           });
         }
       },
@@ -112,7 +110,7 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
         _triggerHaptic();
         setState(() {
           onChanged(true);
-          widget.state.notifyListeners();
+          widget.state.notifyStateChanged();
         });
       },
       onPointerUp: (_) {
@@ -120,7 +118,7 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
           if (mounted) {
             setState(() {
               onChanged(false);
-              widget.state.notifyListeners();
+              widget.state.notifyStateChanged();
             });
           }
         });
@@ -129,7 +127,7 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
         if (mounted) {
           setState(() {
             onChanged(false);
-            widget.state.notifyListeners();
+            widget.state.notifyStateChanged();
           });
         }
       },
@@ -185,7 +183,7 @@ class _F1ButtonClusterState extends State<F1ButtonCluster> {
         _triggerHaptic();
         setState(() {
           onChanged(!active);
-          widget.state.notifyListeners();
+          widget.state.notifyStateChanged();
         });
       },
       child: AnimatedContainer(

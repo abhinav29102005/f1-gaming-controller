@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:vibration/vibration.dart';
 import '../../../core/models/controller_state.dart';
+import '../../../core/services/feedback_service.dart';
 import '../../../core/theme/f1_theme.dart';
 
 class DPadCluster extends StatefulWidget {
@@ -21,12 +21,10 @@ class _DPadClusterState extends State<DPadCluster> {
   void _setDpad(int val) {
     setState(() {
       widget.state.dpad = val;
-      widget.state.notifyListeners();
+      widget.state.notifyStateChanged();
     });
     if (val != 0 && widget.hapticsEnabled) {
-      Vibration.hasVibrator().then((has) {
-        if (has == true) Vibration.vibrate(duration: 10, amplitude: 100);
-      });
+      FeedbackService.mediumClick();
     }
   }
 
@@ -38,7 +36,7 @@ class _DPadClusterState extends State<DPadCluster> {
       onPointerUp: (_) => _setDpad(0),
       onPointerCancel: (_) => _setDpad(0),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 60),
+        duration: const Duration(milliseconds: 40),
         width: 44,
         height: 44,
         decoration: BoxDecoration(
@@ -63,46 +61,48 @@ class _DPadClusterState extends State<DPadCluster> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: F1Theme.glassDecoration(),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(width: 44),
-              _buildDpadBtn(1, Icons.arrow_drop_up, 'UP'),
-              const SizedBox(width: 44),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDpadBtn(7, Icons.arrow_left, 'LEFT'),
-              Container(
-                width: 44,
-                height: 44,
-                decoration: const BoxDecoration(
-                  color: Colors.black38,
-                  shape: BoxShape.circle,
+    return RepaintBoundary(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: F1Theme.glassDecoration(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(width: 44),
+                _buildDpadBtn(1, Icons.arrow_drop_up, 'UP'),
+                const SizedBox(width: 44),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDpadBtn(7, Icons.arrow_left, 'LEFT'),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: Colors.black38,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              _buildDpadBtn(3, Icons.arrow_right, 'RIGHT'),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(width: 44),
-              _buildDpadBtn(5, Icons.arrow_drop_down, 'DOWN'),
-              const SizedBox(width: 44),
-            ],
-          ),
-        ],
+                _buildDpadBtn(3, Icons.arrow_right, 'RIGHT'),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(width: 44),
+                _buildDpadBtn(5, Icons.arrow_drop_down, 'DOWN'),
+                const SizedBox(width: 44),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

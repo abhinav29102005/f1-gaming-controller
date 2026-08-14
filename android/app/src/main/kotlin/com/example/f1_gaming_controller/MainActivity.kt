@@ -7,8 +7,15 @@ import android.bluetooth.BluetoothHidDevice
 import android.bluetooth.BluetoothHidDeviceAppSdpSettings
 import android.bluetooth.BluetoothProfile
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioManager
+import android.media.AudioTrack
 import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.view.KeyEvent
 import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
@@ -23,6 +30,7 @@ import java.util.concurrent.Executors
 class MainActivity : FlutterActivity() {
     private val HID_CHANNEL = "com.example.f1_gaming_controller/hid"
     private val VOLUME_CHANNEL = "com.example.f1_gaming_controller/volume_keys"
+    private val FEEDBACK_CHANNEL = "com.example.f1_gaming_controller/feedback"
 
     private var bluetoothHidDevice: BluetoothHidDevice? = null
     private var connectedHostDevice: BluetoothDevice? = null
@@ -31,7 +39,7 @@ class MainActivity : FlutterActivity() {
     private var volumeEventSink: EventChannel.EventSink? = null
     private var interceptVolumeKeys = false
 
-    private val executor = Executors.newSingleThreadExecutor()
+    private val executor = Executors.newFixedThreadPool(2)
     private var socket: DatagramSocket? = null
 
     // Standard Gamepad HID Descriptor (8-byte / 10-byte report)
@@ -122,6 +130,25 @@ class MainActivity : FlutterActivity() {
             }
         }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FEEDBACK_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "triggerHaptic" -> {
+                    val duration = (call.argument<Int>("duration") ?: 20).toLong()
+                    val amplitude = call.argument<Int>("amplitude") ?: 200
+                    triggerNativeHaptic(duration, amplitude)
+                    result.success(true)
+                }
+                "playSpeakerTone" -> {
+                    val freq = call.argument<Double>("freq") ?: 440.0
+                    val durationMs = call.argument<Int>("durationMs") ?: 50
+                    val vol = (call.argument<Double>("volume") ?: 1.0).toFloat()
+                    playSynthTone(freq, durationMs, vol)
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, VOLUME_CHANNEL).setStreamHandler(
             object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
@@ -135,6 +162,93 @@ class MainActivity : FlutterActivity() {
         )
 
         initBluetoothProfile()
+    }
+
+    private fun triggerNativeHaptic(durationMs: Long, amplitude: Int) {
+        try {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                vibratorManager?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            } ?: return
+
+            if (!vibrator.hasVibrator()) return
+
+            val amp = amplitude.coerceIn(1, 255)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val effect = VibrationEffect.createOneShot(durationMs, amp)
+                vibrator.vibrate(effect)
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(durationMs)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun playSynthTone(frequency: Double, durationMs: Int, volume: Float = 1.0f) {
+        executor.execute {
+            try {
+                val sampleRate = 44100
+                val numSamples = (durationMs * sampleRate) / 1000
+                if (numSamples <= 0) return@execute
+
+                val sample = DoubleArray(numSamples)
+                val generatedSnd = ByteArray(2 * numSamples)
+
+                for (i in 0 until numSamples) {
+                    sample[i] = Math.sin(2 * Math.PI * i / (sampleRate / frequency))
+                }
+
+                var idx = 0
+                for (i in 0 until numSamples) {
+                    val envelope = Math.exp(-4.0 * i / numSamples)
+                    val val16 = (sample[i] * 32767 * volume * envelope).toInt().toShort()
+                    generatedSnd[idx++] = (val16.toInt() and 0x00ff).toByte()
+                    generatedSnd[idx++] = (val16.toInt() and 0xff00 ushr 8).toByte()
+                }
+
+                val audioTrack = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    AudioTrack.Builder()
+                        .setAudioAttributes(
+                            AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_GAME)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                .build()
+                        )
+                        .setAudioFormat(
+                            AudioFormat.Builder()
+                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                .setSampleRate(sampleRate)
+                                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                                .build()
+                        )
+                        .setBufferSizeInBytes(generatedSnd.size)
+                        .setTransferMode(AudioTrack.MODE_STATIC)
+                        .build()
+                } else {
+                    @Suppress("DEPRECATION")
+                    AudioTrack(
+                        AudioManager.STREAM_MUSIC,
+                        sampleRate,
+                        AudioFormat.CHANNEL_OUT_MONO,
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        generatedSnd.size,
+                        AudioTrack.MODE_STATIC
+                    )
+                }
+
+                audioTrack.write(generatedSnd, 0, generatedSnd.size)
+                audioTrack.play()
+                Thread.sleep(durationMs.toLong() + 10)
+                audioTrack.release()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     private fun isBleHidSupported(): Boolean {
@@ -253,3 +367,4 @@ class MainActivity : FlutterActivity() {
         executor.shutdown()
     }
 }
+

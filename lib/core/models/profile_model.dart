@@ -50,7 +50,10 @@ class ControllerProfile extends HiveObject {
   double gyroDeadzone;
 
   @HiveField(15)
-  String layoutMode; // 'f1_racing' | 'tekken_7' | 'generic'
+  String layoutMode; // 'f1_racing' | 'tekken_8' | 'generic'
+
+  @HiveField(16)
+  bool soundFeedbackEnabled;
 
   ControllerProfile({
     required this.id,
@@ -69,6 +72,7 @@ class ControllerProfile extends HiveObject {
     this.invertGyro = false,
     this.gyroDeadzone = 0.02,
     this.layoutMode = 'f1_racing',
+    this.soundFeedbackEnabled = true,
   });
 
   // ── Built-in Presets ──────────────────────────────────────────────
@@ -85,6 +89,7 @@ class ControllerProfile extends HiveObject {
       gyroSteeringEnabled: true,
       gyroSensitivity: 1.5,
       hapticFeedbackEnabled: true,
+      soundFeedbackEnabled: true,
       hardwareVolumePaddles: true,
       playerId: 0,
       swapPaddleShifters: false,
@@ -106,6 +111,7 @@ class ControllerProfile extends HiveObject {
       gyroSteeringEnabled: true,
       gyroSensitivity: 1.3,
       hapticFeedbackEnabled: true,
+      soundFeedbackEnabled: true,
       hardwareVolumePaddles: false,
       playerId: 0,
       swapPaddleShifters: false,
@@ -127,6 +133,7 @@ class ControllerProfile extends HiveObject {
       gyroSteeringEnabled: true,
       gyroSensitivity: 1.8,
       hapticFeedbackEnabled: true,
+      soundFeedbackEnabled: true,
       hardwareVolumePaddles: false,
       playerId: 0,
       swapPaddleShifters: false,
@@ -136,10 +143,10 @@ class ControllerProfile extends HiveObject {
     );
   }
 
-  static ControllerProfile tekken7Preset() {
+  static ControllerProfile tekken8Preset() {
     return ControllerProfile(
-      id: 'tekken7_preset',
-      name: 'Tekken 7 Fight Pad',
+      id: 'tekken8_preset',
+      name: 'Tekken 8 Official Fight Pad',
       steeringDeadzone: 0.0,
       throttleDeadzone: 0.0,
       brakeDeadzone: 0.0,
@@ -148,12 +155,16 @@ class ControllerProfile extends HiveObject {
       gyroSteeringEnabled: false,
       gyroSensitivity: 1.0,
       hapticFeedbackEnabled: true,
+      soundFeedbackEnabled: true,
       hardwareVolumePaddles: false,
       playerId: 0,
       swapPaddleShifters: false,
       invertGyro: false,
       gyroDeadzone: 0.0,
-      layoutMode: 'tekken_7',
+      layoutMode: 'tekken_8',
     );
   }
+
+  static ControllerProfile tekken7Preset() => tekken8Preset();
 }
+

@@ -198,7 +198,7 @@ class _ControllerScreenState extends State<ControllerScreen> {
               const SizedBox(height: 8),
               // Main controller body — switches on layoutMode
               Expanded(
-                child: _profile.layoutMode == 'tekken_7'
+                child: (_profile.layoutMode == 'tekken_8' || _profile.layoutMode == 'tekken_7')
                     ? TekkenControllerLayout(
                         state: _state,
                         hapticsEnabled: _profile.hapticFeedbackEnabled,

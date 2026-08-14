@@ -96,4 +96,8 @@ class ControllerState extends ChangeNotifier {
     if (buttonSelect) mask |= (1 << 14);
     return mask;
   }
+
+  void notifyStateChanged() {
+    notifyListeners();
+  }
 }

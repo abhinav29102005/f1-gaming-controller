@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:vibration/vibration.dart';
 import '../../../core/models/controller_state.dart';
+import '../../../core/services/feedback_service.dart';
 import '../../../core/theme/f1_theme.dart';
 
 enum PedalType { throttle, brake }
@@ -48,7 +48,7 @@ class _PedalSliderWidgetState extends State<PedalSliderWidget> {
     } else {
       widget.state.brake = clamped;
     }
-    widget.state.notifyListeners();
+    widget.state.notifyStateChanged();
   }
 
   void _onPanUpdate(Offset localPosition, double height) {
@@ -68,9 +68,7 @@ class _PedalSliderWidgetState extends State<PedalSliderWidget> {
 
   void _triggerHaptic() {
     if (widget.hapticsEnabled) {
-      Vibration.hasVibrator().then((has) {
-        if (has == true) Vibration.vibrate(duration: 12, amplitude: 128);
-      });
+      FeedbackService.lightTick();
     }
   }
 

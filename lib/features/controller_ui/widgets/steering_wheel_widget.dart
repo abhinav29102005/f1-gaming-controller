@@ -77,7 +77,7 @@ class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTi
     _gyroSubscription?.cancel();
     // Use accelerometer for absolute tilt angle (gravity based)
     _gyroSubscription = accelerometerEventStream(
-      samplingPeriod: const Duration(milliseconds: 4), // 250Hz to match input loop
+      samplingPeriod: const Duration(milliseconds: 16), // 60Hz smooth, low-memory polling
     ).listen((AccelerometerEvent event) {
       if (!mounted || !widget.gyroEnabled) return;
       
@@ -111,7 +111,7 @@ class _SteeringWheelWidgetState extends State<SteeringWheelWidget> with SingleTi
 
       double newAngle = angleDeg.clamp(-maxDeg, maxDeg);
       _setAngle(newAngle);
-      widget.state.notifyListeners();
+      widget.state.notifyStateChanged();
     });
   }
 
