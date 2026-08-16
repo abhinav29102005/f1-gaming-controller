@@ -14,6 +14,7 @@ class MultiplayerLobbyWidget extends StatelessWidget {
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenConnection;
   final VoidCallback onOpenHostMode;
+  final Function(String newLayout)? onLayoutChanged;
 
   const MultiplayerLobbyWidget({
     super.key,
@@ -25,6 +26,7 @@ class MultiplayerLobbyWidget extends StatelessWidget {
     required this.onOpenSettings,
     required this.onOpenConnection,
     required this.onOpenHostMode,
+    this.onLayoutChanged,
   });
 
   static Color _qualityColor(ConnectionQuality q) {
@@ -41,39 +43,95 @@ class MultiplayerLobbyWidget extends StatelessWidget {
     }
   }
 
+  Color get _themeAccentColor {
+    if (layoutMode == 'asphalt_legends') return const Color(0xFFFF6B00);
+    if (layoutMode == 'tekken_8' || layoutMode == 'tekken_7') return const Color(0xFFFF3333);
+    return F1Theme.getPlayerColor(state.playerId);
+  }
+
+  IconData get _layoutIcon {
+    if (layoutMode == 'asphalt_legends') return Icons.flash_on;
+    if (layoutMode == 'tekken_8' || layoutMode == 'tekken_7') return Icons.sports_martial_arts;
+    if (layoutMode == 'generic') return Icons.gamepad;
+    return Icons.sports_motorsports;
+  }
+
+  String get _layoutTitle {
+    if (layoutMode == 'asphalt_legends') return 'ASPHALT UNITE';
+    if (layoutMode == 'tekken_8' || layoutMode == 'tekken_7') return 'TEKKEN 8';
+    if (layoutMode == 'generic') return 'GENERIC PAD';
+    return 'F1 RACING';
+  }
+
+  Widget _buildLayoutChip(String id, String label, Color activeColor) {
+    final bool isSelected = (layoutMode == id) || (id == 'tekken_8' && layoutMode == 'tekken_7');
+    return InkWell(
+      onTap: () {
+        if (onLayoutChanged != null) {
+          onLayoutChanged!(id);
+        }
+      },
+      borderRadius: BorderRadius.circular(4),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withOpacity(0.25) : Colors.black38,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isSelected ? activeColor : Colors.white12,
+            width: isSelected ? 1.2 : 0.8,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white60,
+            fontSize: 9,
+            fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final Color playerColor = F1Theme.getPlayerColor(state.playerId);
-    final bool isTekken = layoutMode == 'tekken_8' || layoutMode == 'tekken_7';
+    final Color accent = _themeAccentColor;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: F1Theme.glassDecoration(borderColor: isTekken ? const Color(0xFFFF6B00) : playerColor),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: F1Theme.glassDecoration(borderColor: accent.withOpacity(0.6)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // App Title / Logo Area — dynamic based on layoutMode
+          // Left: Layout Logo & Quick Switcher
           Row(
             children: [
-              Icon(
-                isTekken ? Icons.sports_martial_arts : Icons.sports_motorsports,
-                color: isTekken ? const Color(0xFFFF6B00) : playerColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
+              Icon(_layoutIcon, color: accent, size: 16),
+              const SizedBox(width: 6),
               Text(
-                isTekken ? 'TEKKEN 8' : 'F1 CONTROLLER',
+                _layoutTitle,
                 style: TextStyle(
-                  color: isTekken ? const Color(0xFFFF6B00) : playerColor,
+                  color: accent,
                   fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                  letterSpacing: 2.0,
+                  fontSize: 13,
+                  letterSpacing: 1.2,
                   fontStyle: FontStyle.italic,
                 ),
               ),
+              const SizedBox(width: 10),
+              // Layout Switcher Chips
+              _buildLayoutChip('f1_racing', 'F1', F1Theme.f1Red),
+              _buildLayoutChip('asphalt_legends', 'ASPHALT', const Color(0xFFFF6B00)),
+              _buildLayoutChip('tekken_8', 'TEKKEN 8', const Color(0xFFFF3333)),
+              _buildLayoutChip('generic', 'GENERIC', F1Theme.neonCyan),
             ],
           ),
-          // Live Hz & Ping & Telemetry Monitor + Sync Badge + Mode Switchers
+
+          // Right: Hz & Ping & Sync + Quick Action Buttons
           Row(
             children: [
               ValueListenableBuilder<int>(
@@ -88,61 +146,56 @@ class MultiplayerLobbyWidget extends StatelessWidget {
                     children: [
                       // Full Sync Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        margin: const EdgeInsets.only(right: 4),
                         decoration: BoxDecoration(
-                          color: F1Theme.neonCyan.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: F1Theme.neonCyan),
+                          color: F1Theme.neonCyan.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: F1Theme.neonCyan.withOpacity(0.6)),
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.sync_lock, color: F1Theme.neonCyan, size: 12),
-                            SizedBox(width: 4),
+                            Icon(Icons.sync_lock, color: F1Theme.neonCyan, size: 10),
+                            SizedBox(width: 3),
                             Text(
-                              'FULL SYNC 100%',
+                              '100% SYNC',
                               style: TextStyle(
                                 color: F1Theme.neonCyan,
-                                fontSize: 9,
+                                fontSize: 8,
                                 fontWeight: FontWeight.w900,
-                                letterSpacing: 0.8,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      // Connection Status Badge
+                      // Connection Badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        margin: const EdgeInsets.only(right: 4),
                         decoration: BoxDecoration(
                           color: isConnected
-                              ? F1Theme.neonGreen.withOpacity(0.2)
-                              : F1Theme.f1Red.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(6),
+                              ? F1Theme.neonGreen.withOpacity(0.18)
+                              : F1Theme.f1Red.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                              color: isConnected
-                                  ? F1Theme.neonGreen
-                                  : F1Theme.f1Red),
+                            color: isConnected ? F1Theme.neonGreen : F1Theme.f1Red,
+                          ),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               isConnected ? Icons.wifi : Icons.wifi_off,
-                              color: isConnected
-                                  ? F1Theme.neonGreen
-                                  : F1Theme.f1Red,
-                              size: 14,
+                              color: isConnected ? F1Theme.neonGreen : F1Theme.f1Red,
+                              size: 10,
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 3),
                             Text(
-                              isConnected ? 'CONNECTED' : 'DISCONNECTED',
+                              isConnected ? 'LIVE' : 'OFFLINE',
                               style: TextStyle(
-                                color: isConnected
-                                    ? F1Theme.neonGreen
-                                    : F1Theme.f1Red,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                                color: isConnected ? F1Theme.neonGreen : F1Theme.f1Red,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ],
@@ -150,23 +203,22 @@ class MultiplayerLobbyWidget extends StatelessWidget {
                       ),
                       // Hz Monitor
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        margin: const EdgeInsets.only(right: 4),
                         decoration: BoxDecoration(
                           color: Colors.black45,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: F1Theme.neonCyan),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: F1Theme.neonCyan.withOpacity(0.6)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.bolt,
-                                color: F1Theme.neonCyan, size: 14),
-                            const SizedBox(width: 4),
+                            const Icon(Icons.bolt, color: F1Theme.neonCyan, size: 10),
+                            const SizedBox(width: 2),
                             Text(
                               '$hz Hz',
                               style: const TextStyle(
                                 color: F1Theme.neonCyan,
-                                fontSize: 12,
+                                fontSize: 9,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'monospace',
                               ),
@@ -174,26 +226,23 @@ class MultiplayerLobbyWidget extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 6),
                       // Ping Badge
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.black45,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: qualityColor),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: qualityColor.withOpacity(0.6)),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.network_ping,
-                                color: qualityColor, size: 14),
-                            const SizedBox(width: 4),
+                            Icon(Icons.network_ping, color: qualityColor, size: 10),
+                            const SizedBox(width: 2),
                             Text(
                               '${ping.round()}ms',
                               style: TextStyle(
                                 color: qualityColor,
-                                fontSize: 12,
+                                fontSize: 9,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'monospace',
                               ),
@@ -205,31 +254,35 @@ class MultiplayerLobbyWidget extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               IconButton(
-                icon: const Icon(Icons.computer, color: F1Theme.neonCyan),
+                icon: const Icon(Icons.computer, color: F1Theme.neonCyan, size: 18),
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                padding: EdgeInsets.zero,
                 onPressed: onOpenHostMode,
-                tooltip: 'Windows Host Telemetry Dashboard',
+                tooltip: 'Windows Host Dashboard',
               ),
               IconButton(
-                icon: const Icon(Icons.wifi_tethering, color: Colors.white),
+                icon: const Icon(Icons.wifi_tethering, color: Colors.white, size: 18),
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                padding: EdgeInsets.zero,
                 onPressed: onOpenConnection,
                 tooltip: 'Connection Setup',
               ),
               const SizedBox(width: 4),
               ElevatedButton.icon(
-                icon: const Icon(Icons.tune, color: Colors.black, size: 16),
+                icon: const Icon(Icons.tune, color: Colors.black, size: 12),
                 label: const Text('CALIBRATE',
                     style: TextStyle(
                         color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11)),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 9)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: F1Theme.electricAmber,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                  minimumSize: const Size(0, 26),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6)),
+                      borderRadius: BorderRadius.circular(4)),
                 ),
                 onPressed: onOpenSettings,
               ),

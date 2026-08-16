@@ -54,6 +54,34 @@ class FeedbackService {
     _triggerSound(freq: 220.0, durationMs: 120, volume: 1.0);
   }
 
+  /// Asphalt Legends Nitro Boost feedback
+  static void nitroBoost() {
+    if (!hapticsEnabled) return;
+    _triggerNativeHaptic(durationMs: 30, amplitude: 220);
+    _triggerSound(freq: 750.0, durationMs: 50, volume: 0.85);
+  }
+
+  /// Asphalt Legends Shockwave Burst feedback
+  static void shockwaveBurst() {
+    if (!hapticsEnabled) return;
+    _triggerNativeHaptic(durationMs: 90, amplitude: 255);
+    _triggerSound(freq: 1200.0, durationMs: 140, volume: 1.0);
+  }
+
+  /// Asphalt Legends 360 Spin / Drift feedback
+  static void driftSpin() {
+    if (!hapticsEnabled) return;
+    _triggerNativeHaptic(durationMs: 40, amplitude: 240);
+    _triggerSound(freq: 520.0, durationMs: 65, volume: 0.9);
+  }
+
+  /// Asphalt Legends Route Picker feedback
+  static void routePick() {
+    if (!hapticsEnabled) return;
+    _triggerNativeHaptic(durationMs: 15, amplitude: 160);
+    _triggerSound(freq: 880.0, durationMs: 30, volume: 0.7);
+  }
+
   // ── Internal Dispatch ─────────────────────────────────────────────
 
   static void _triggerNativeHaptic({

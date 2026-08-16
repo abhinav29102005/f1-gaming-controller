@@ -166,5 +166,28 @@ class ControllerProfile extends HiveObject {
   }
 
   static ControllerProfile tekken7Preset() => tekken8Preset();
+
+  static ControllerProfile asphaltLegendsPreset() {
+    return ControllerProfile(
+      id: 'asphalt_legends_preset',
+      name: 'Asphalt Legends Unite Arcade',
+      steeringDeadzone: 0.02,
+      throttleDeadzone: 0.01,
+      brakeDeadzone: 0.01,
+      steeringRotationDegrees: 270,
+      linearityMode: 'linear',
+      gyroSteeringEnabled: true,
+      gyroSensitivity: 1.8,
+      hapticFeedbackEnabled: true,
+      soundFeedbackEnabled: true,
+      hardwareVolumePaddles: true,
+      playerId: 0,
+      swapPaddleShifters: false,
+      invertGyro: false,
+      gyroDeadzone: 0.02,
+      layoutMode: 'asphalt_legends',
+    );
+  }
 }
+
 

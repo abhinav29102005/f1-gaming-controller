@@ -37,10 +37,11 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen>
 
     // Start on the tab that matches the current layout
     int initialTab = 0;
-    if (_profile.layoutMode == 'tekken_8' || _profile.layoutMode == 'tekken_7') initialTab = 1;
-    if (_profile.layoutMode == 'generic') initialTab = 2;
+    if (_profile.layoutMode == 'asphalt_legends') initialTab = 1;
+    if (_profile.layoutMode == 'tekken_8' || _profile.layoutMode == 'tekken_7') initialTab = 2;
+    if (_profile.layoutMode == 'generic') initialTab = 3;
 
-    _tabController = TabController(length: 3, vsync: this, initialIndex: initialTab);
+    _tabController = TabController(length: 4, vsync: this, initialIndex: initialTab);
   }
 
   @override
@@ -746,6 +747,84 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen>
   }
 
   // ══════════════════════════════════════════════════════════════════
+  // TAB — ASPHALT LEGENDS
+  // ══════════════════════════════════════════════════════════════════
+  Widget _buildAsphaltTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.flash_on, size: 20),
+            label: const Text(
+              'LOAD ASPHALT LEGENDS PRESET',
+              style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                  letterSpacing: 1.5),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6B00),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () =>
+                _applyPreset(ControllerProfile.asphaltLegendsPreset()),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: F1Theme.carbonDecoration(borderColor: const Color(0xFFFF6B00)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('ASPHALT RACING CONTROLS',
+                  style: TextStyle(
+                      color: Color(0xFFFF6B00),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13)),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                title: const Text('Enable Gyro Tilt Steering',
+                    style: TextStyle(color: Colors.white)),
+                subtitle: const Text('Tilt phone left/right to steer car',
+                    style: TextStyle(color: Colors.white54, fontSize: 11)),
+                value: _profile.gyroSteeringEnabled,
+                onChanged: (v) =>
+                    setState(() => _profile.gyroSteeringEnabled = v),
+                activeTrackColor: const Color(0xFFFF6B00),
+              ),
+              _buildSliderTile(
+                title: 'Gyro Sensitivity',
+                value: _profile.gyroSensitivity,
+                min: 0.5,
+                max: 3.0,
+                onChanged: (v) =>
+                    setState(() => _profile.gyroSensitivity = v),
+                displayVal: '${_profile.gyroSensitivity.toStringAsFixed(1)}x',
+              ),
+              SwitchListTile(
+                title: const Text('Ultra Haptic Feedback',
+                    style: TextStyle(color: Colors.white)),
+                subtitle: const Text('Haptic vibration on Nitro & 360 Spins',
+                    style: TextStyle(color: Colors.white54, fontSize: 11)),
+                value: _profile.hapticFeedbackEnabled,
+                onChanged: (v) =>
+                    setState(() => _profile.hapticFeedbackEnabled = v),
+                activeTrackColor: F1Theme.neonCyan,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════
   // MAIN BUILD
   // ══════════════════════════════════════════════════════════════════
   @override
@@ -775,20 +854,24 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen>
           labelColor: F1Theme.electricAmber,
           unselectedLabelColor: Colors.white38,
           labelStyle: const TextStyle(
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
-              letterSpacing: 0.8),
+              letterSpacing: 0.6),
           tabs: const [
             Tab(
-              icon: Icon(Icons.sports_motorsports, size: 18),
+              icon: Icon(Icons.sports_motorsports, size: 16),
               text: 'F1 RACING',
             ),
             Tab(
-              icon: Icon(Icons.sports_martial_arts, size: 18),
+              icon: Icon(Icons.flash_on, size: 16),
+              text: 'ASPHALT',
+            ),
+            Tab(
+              icon: Icon(Icons.sports_martial_arts, size: 16),
               text: 'TEKKEN 8',
             ),
             Tab(
-              icon: Icon(Icons.gamepad, size: 18),
+              icon: Icon(Icons.gamepad, size: 16),
               text: 'GENERIC',
             ),
           ],
@@ -798,6 +881,7 @@ class _ProfileManagerScreenState extends State<ProfileManagerScreen>
         controller: _tabController,
         children: [
           _buildF1Tab(),
+          _buildAsphaltTab(),
           _buildTekkenTab(),
           _buildGenericTab(),
         ],

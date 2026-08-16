@@ -8,10 +8,12 @@ import '../widgets/dpad_cluster.dart';
 /// Tekken 8 official fight pad controller layout.
 ///
 /// Layout (landscape):
-///   LEFT  — Large D-Pad + Start/Select pills
+///   LEFT  — Large D-Pad + Start/Select pills + Reference Guide button
 ///   RIGHT — Shoulder/trigger row (L2=Rage Art / L1=Block / R1=Throw / R2=Heat Engage)
-///            + 2×2 attack buttons (X=LK, Y=RP, A=LP, B=RK)
-///            + Tekken 8 combo strip (1+2, 2+4, 3+4, 1+3+4, Heat Smash, Rage Art)
+///            + 2×2 attack buttons in standard Tekken Arcade grid:
+///              [1 (LP - Top Left)]  [2 (RP - Top Right)]
+///              [3 (LK - Bottom Left)] [4 (RK - Bottom Right)]
+///            + Tekken 8 macro combo strip (1+2, 3+4, 1+3, 2+4, 2+3 Heat Smash, Rage Art)
 class TekkenControllerLayout extends StatefulWidget {
   final ControllerState state;
   final bool hapticsEnabled;
@@ -52,12 +54,372 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
     });
   }
 
-  // ── Builders ─────────────────────────────────────────────────────────
+  // ── Open Interactive Tekken 8 Reference Guide Modal ──────────────────
+  void _showTekkenReferenceGuide(BuildContext context) {
+    FeedbackService.lightTick();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: const Color(0xFF141419),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(color: const Color(0xFFFF6B00), width: 1.5),
+            boxShadow: const [
+              BoxShadow(color: Color(0xFFFF6B00), blurRadius: 20, spreadRadius: -5),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Modal Header Bar
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E1E26),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+                  border: Border(bottom: BorderSide(color: Colors.white10)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.sports_martial_arts, color: Color(0xFFFF6B00), size: 22),
+                        SizedBox(width: 8),
+                        Text(
+                          'TEKKEN 8 ULTIMATE REFERENCE GUIDE',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white70),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
 
-  /// Large circular attack button with Xbox letter + Tekken 8 notation.
+              // Scrollable Content Body
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section 1: Key Maps & Universal Notation
+                      _buildGuideSectionHeader('1. KEY MAPS & UNIVERSAL NOTATION', Icons.gamepad),
+                      _buildGuideCard(
+                        children: [
+                          const Text(
+                            'Tekken uses a universal numbering system for attack limbs across all platforms:',
+                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildNotationRow('1', 'Left Punch (LP)', 'PlayStation: Square | Xbox: X | Arcade: Top Left'),
+                          _buildNotationRow('2', 'Right Punch (RP)', 'PlayStation: Triangle | Xbox: Y | Arcade: Top Right'),
+                          _buildNotationRow('3', 'Left Kick (LK)', 'PlayStation: Cross/X | Xbox: A | Arcade: Bottom Left'),
+                          _buildNotationRow('4', 'Right Kick (RK)', 'PlayStation: Circle | Xbox: B | Arcade: Bottom Right'),
+                          _buildNotationRow('1+2', 'LP + RP', 'Left Punch + Right Punch simultaneously'),
+                          _buildNotationRow('3+4', 'LK + RK', 'Left Kick + Right Kick simultaneously'),
+                          const Divider(color: Colors.white12, height: 16),
+                          const Text('Directional Inputs (Assuming P1 facing right):', style: TextStyle(color: F1Theme.electricAmber, fontWeight: FontWeight.bold, fontSize: 11)),
+                          const SizedBox(height: 6),
+                          const Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              _GuideChip(label: 'f = Forward'),
+                              _GuideChip(label: 'b = Back (Guard)'),
+                              _GuideChip(label: 'u = Up (Sidestep)'),
+                              _GuideChip(label: 'd = Down (Crouch)'),
+                              _GuideChip(label: 'd/f = Down-Forward (Launcher)'),
+                              _GuideChip(label: 'd/b = Down-Back (Crouch block)'),
+                              _GuideChip(label: 'u/f = Up-Forward (Hopkick)'),
+                              _GuideChip(label: 'qcf = Quarter Circle Forward'),
+                              _GuideChip(label: 'qcb = Quarter Circle Back'),
+                              _GuideChip(label: '~ = Slide input (e.g. 1~2)'),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Section 2: Hit Levels & Properties
+                      _buildGuideSectionHeader('2. HIT LEVELS & PROPERTIES', Icons.layers),
+                      _buildGuideCard(
+                        children: [
+                          _buildPropertyRow('High', 'Can be blocked standing. Can be completely ducked under.', F1Theme.neonCyan),
+                          _buildPropertyRow('Mid', 'Must be blocked standing. Will hit ducking opponents!', F1Theme.electricAmber),
+                          _buildPropertyRow('Low', 'Must be blocked crouching. Hits standing opponents.', F1Theme.f1Red),
+                          const Divider(color: Colors.white12, height: 16),
+                          _buildPropertyRow('High Crush', 'Moves that duck underneath high attacks.', Colors.lightBlueAccent),
+                          _buildPropertyRow('Low Crush', 'Moves that leap or hop over low attacks (e.g., u/f+4 hopkicks).', Colors.lightGreenAccent),
+                          _buildPropertyRow('Tornado (T!)', 'Combo extension property. Rapidly spins airborne opponent for juggle continuity.', const Color(0xFFFF6B00)),
+                          _buildPropertyRow('Power Crush', 'Armored move that absorbs incoming High and Mid attacks.', Colors.purpleAccent),
+                          _buildPropertyRow('Homing Attacks', 'Glowing blue trail attacks that track sidestepping opponents.', Colors.cyanAccent),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Section 3: Core Mechanics in Tekken 8
+                      _buildGuideSectionHeader('3. CORE MECHANICS IN TEKKEN 8', Icons.whatshot),
+                      _buildGuideCard(
+                        children: [
+                          const Text('HEAT SYSTEM (Aggressive Play Drive):', style: TextStyle(color: Color(0xFFFF6B00), fontWeight: FontWeight.w900, fontSize: 12)),
+                          const SizedBox(height: 6),
+                          _buildPropertyRow('Heat Burst', 'Press 1+2 in neutral to activate Heat with short knockdown pushback.', const Color(0xFFFF6B00)),
+                          _buildPropertyRow('Heat Engager', 'Specific character moves that trigger cinematic dash into Heat state.', const Color(0xFFFF6B00)),
+                          _buildPropertyRow('Heat Dash', 'Hold Forward (f) after Heat Engager to dash directly into opponent face.', const Color(0xFFFF6B00)),
+                          _buildPropertyRow('Heat Smash', 'High-damage universal one-button attack (2+3 or button) consuming remaining Heat.', const Color(0xFFFF6B00)),
+                          const Divider(color: Colors.white12, height: 16),
+                          const Text('RAGE & RECOVERABLE GAUGE:', style: TextStyle(color: F1Theme.f1Red, fontWeight: FontWeight.w900, fontSize: 12)),
+                          const SizedBox(height: 6),
+                          _buildPropertyRow('Rage State', 'Activates at <= 25% health. Grants damage buff and unlocks Rage Art.', F1Theme.f1Red),
+                          _buildPropertyRow('Rage Art', '3+4 or d/f+1+2 super cinematic high-damage strike. Once per round.', F1Theme.f1Red),
+                          _buildPropertyRow('Recoverable Gauge', 'Blocked attacks deal white health chip damage. Regenerates by attacking back!', Colors.white),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Section 4: Complete Character Roster
+                      _buildGuideSectionHeader('4. COMPLETE CHARACTER ROSTER', Icons.people),
+                      _buildGuideCard(
+                        children: [
+                          const Text('BASE ROSTER (32 Characters):', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                          const SizedBox(height: 6),
+                          const Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              _RosterTag(name: 'Alisa Bosconovitch'),
+                              _RosterTag(name: 'Asuka Kazama'),
+                              _RosterTag(name: 'Azucena Ortiz'),
+                              _RosterTag(name: 'Bryan Fury'),
+                              _RosterTag(name: 'Claudio Serafino'),
+                              _RosterTag(name: 'Devil Jin'),
+                              _RosterTag(name: 'Sergei Dragunov'),
+                              _RosterTag(name: 'Feng Wei'),
+                              _RosterTag(name: 'Hwoarang'),
+                              _RosterTag(name: 'Jack-8'),
+                              _RosterTag(name: 'Jin Kazama'),
+                              _RosterTag(name: 'Jun Kazama'),
+                              _RosterTag(name: 'Kazuya Mishima'),
+                              _RosterTag(name: 'King II'),
+                              _RosterTag(name: 'Kuma'),
+                              _RosterTag(name: 'Lars Alexandersson'),
+                              _RosterTag(name: 'Marshall Law'),
+                              _RosterTag(name: 'Lee Chaolan'),
+                              _RosterTag(name: 'Leo Kliesen'),
+                              _RosterTag(name: 'Leroy Smith'),
+                              _RosterTag(name: 'Lili De Rochefort'),
+                              _RosterTag(name: 'Nina Williams'),
+                              _RosterTag(name: 'Panda'),
+                              _RosterTag(name: 'Paul Phoenix'),
+                              _RosterTag(name: 'Raven'),
+                              _RosterTag(name: 'Reina Mishima'),
+                              _RosterTag(name: 'Shaheen'),
+                              _RosterTag(name: 'Steve Fox'),
+                              _RosterTag(name: 'Victor Chevalier'),
+                              _RosterTag(name: 'Ling Xiaoyu'),
+                              _RosterTag(name: 'Yoshimitsu'),
+                              _RosterTag(name: 'Zafina'),
+                            ],
+                          ),
+                          const Divider(color: Colors.white12, height: 16),
+                          const Text('SEASON 1 DLC CHARACTERS:', style: TextStyle(color: F1Theme.electricAmber, fontWeight: FontWeight.bold, fontSize: 11)),
+                          const SizedBox(height: 6),
+                          const Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              _RosterTag(name: 'Eddy Gordo', isDlc: true),
+                              _RosterTag(name: 'Lidia Sobieska', isDlc: true),
+                              _RosterTag(name: 'Heihachi Mishima', isDlc: true),
+                              _RosterTag(name: 'Clive Rosfield (Guest)', isDlc: true),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Section 5: Standard Combo Blueprint
+                      _buildGuideSectionHeader('5. STANDARD COMBO BLUEPRINT', Icons.schema),
+                      _buildGuideCard(
+                        children: [
+                          _buildComboStep('Step 1', 'The Launcher', 'A move sending opponent airborne (e.g. d/f+2 or u/f+4 hopkick).'),
+                          _buildComboStep('Step 2', 'Filler / Juggle Extension', 'Quick mid/high attack string maintaining airborne height.'),
+                          _buildComboStep('Step 3', 'Tornado (T!)', 'Forces mid-air spin, landing opponent for additional run-up hits.'),
+                          _buildComboStep('Step 4', 'Ender / Wall Carry', 'Hard-hitting finisher or carrying opponent into wall splat.'),
+                          _buildComboStep('Step 5', 'Wall Combo', 'Additional follow-up string after wall splat for max damage!'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Guide Helper Widgets ─────────────────────────────────────────────
+  Widget _buildGuideSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFFFF6B00), size: 18),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFFFF6B00),
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.0,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGuideCard({required List<Widget> children}) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B1B22),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildNotationRow(String number, String limb, String platforms) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF6B00).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFFFF6B00)),
+            ),
+            child: Text(
+              number,
+              style: const TextStyle(color: Color(0xFFFF6B00), fontWeight: FontWeight.w900, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontSize: 11),
+                children: [
+                  TextSpan(text: '$limb — ', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  TextSpan(text: platforms, style: const TextStyle(color: Colors.white60)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPropertyRow(String name, String desc, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 90,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: color.withOpacity(0.5)),
+            ),
+            child: Text(
+              name,
+              style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 10),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              desc,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComboStep(String step, String name, String desc) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: F1Theme.electricAmber.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: F1Theme.electricAmber),
+            ),
+            child: Text(
+              step,
+              style: const TextStyle(color: F1Theme.electricAmber, fontWeight: FontWeight.w900, fontSize: 9),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                Text(desc, style: const TextStyle(color: Colors.white60, fontSize: 10)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Attack & Control Button Builders ─────────────────────────────────
+
+  /// Standard Arcade Attack Button: 1=LP, 2=RP, 3=LK, 4=RK
   Widget _buildAttackButton({
-    required String xboxLabel,
-    required String tekkenLabel,
+    required String tekkenNumber,
+    required String limbNotation,
+    required String platformInput,
     required bool active,
     required Color color,
     required void Function(bool) onChanged,
@@ -112,20 +474,27 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              xboxLabel,
+              tekkenNumber,
               style: TextStyle(
                 color: active ? Colors.white : color,
-                fontSize: size * 0.32,
+                fontSize: size * 0.35,
                 fontWeight: FontWeight.w900,
               ),
             ),
             Text(
-              tekkenLabel,
+              limbNotation,
               style: TextStyle(
-                color: active ? Colors.white70 : Colors.white54,
+                color: active ? Colors.white70 : Colors.white70,
                 fontSize: size * 0.14,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.5,
+              ),
+            ),
+            Text(
+              platformInput,
+              style: TextStyle(
+                color: active ? Colors.white54 : Colors.white38,
+                fontSize: size * 0.11,
               ),
             ),
           ],
@@ -134,7 +503,6 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
     );
   }
 
-  /// Wide shoulder / trigger pill button.
   Widget _buildShoulderButton({
     required String label,
     required String sublabel,
@@ -172,10 +540,10 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 30),
-          height: 48,
+          height: 44,
           decoration: BoxDecoration(
             color: active ? color.withOpacity(0.4) : F1Theme.carbonCard,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: active ? color : color.withOpacity(0.35),
               width: active ? 2.0 : 1.0,
@@ -192,18 +560,16 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
                 label,
                 style: TextStyle(
                   color: active ? Colors.white : Colors.white70,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
                 ),
               ),
               Text(
                 sublabel,
                 style: TextStyle(
                   color: active ? Colors.white70 : Colors.white38,
-                  fontSize: 9,
+                  fontSize: 8,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 0.4,
                 ),
               ),
             ],
@@ -213,7 +579,6 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
     );
   }
 
-  /// Bottom combo chip — fires multiple Tekken 8 inputs simultaneously.
   Widget _buildComboChip({
     required String line1,
     required String line2,
@@ -225,7 +590,7 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
       child: GestureDetector(
         onTapDown: (_) => _fireCombo(setters, isHeat: isHeat),
         child: Container(
-          height: 42,
+          height: 38,
           margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
             color: color.withOpacity(0.15),
@@ -242,7 +607,7 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
                 line1,
                 style: TextStyle(
                   color: color,
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.3,
                 ),
@@ -251,9 +616,8 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
                 line2,
                 style: TextStyle(
                   color: color.withOpacity(0.8),
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 0.3,
                 ),
               ),
             ],
@@ -263,7 +627,6 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
     );
   }
 
-  /// Small Start / Select pill button.
   Widget _buildPillButton({
     required String label,
     required bool active,
@@ -298,26 +661,21 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 30),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           color: active ? Colors.white.withOpacity(0.25) : F1Theme.carbonCard,
           border: Border.all(
             color: active ? Colors.white : Colors.white24,
-            width: active ? 2.0 : 1.0,
+            width: active ? 1.5 : 1.0,
           ),
-          boxShadow: [
-            if (active)
-              const BoxShadow(color: Colors.white30, blurRadius: 8, spreadRadius: 1),
-          ],
         ),
         child: Text(
           label,
           style: TextStyle(
             color: active ? Colors.white : Colors.white60,
-            fontSize: 10,
+            fontSize: 9,
             fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
           ),
         ),
       ),
@@ -325,6 +683,7 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
   }
 
   // ── Build ────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final s = widget.state;
@@ -333,55 +692,81 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── LEFT PANEL: D-Pad + Start/Select ────────────────────────
+          // ── LEFT PANEL: D-Pad + Start/Select + Reference Guide CTA ──
           Container(
             width: 175,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            decoration: F1Theme.glassDecoration(),
+            padding: const EdgeInsets.all(6),
+            decoration: F1Theme.glassDecoration(borderColor: const Color(0xFFFF6B00).withOpacity(0.5)),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Tekken 8 Title Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFF6B00).withOpacity(0.2),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFFF6B00).withOpacity(0.6)),
+                    border: Border.all(color: const Color(0xFFFF6B00).withOpacity(0.8)),
                     boxShadow: const [
-                      BoxShadow(color: Color(0xFFFF6B00), blurRadius: 10, spreadRadius: -4),
+                      BoxShadow(color: Color(0xFFFF6B00), blurRadius: 8, spreadRadius: -4),
                     ],
                   ),
-                  child: const Text(
-                    'TEKKEN 8 FIGHT PAD',
-                    style: TextStyle(
-                      color: Color(0xFFFF6B00),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                    ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.sports_martial_arts, color: Color(0xFFFF6B00), size: 12),
+                      SizedBox(width: 4),
+                      Text(
+                        'TEKKEN 8 FIGHT PAD',
+                        style: TextStyle(
+                          color: Color(0xFFFF6B00),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+
                 // D-Pad Cluster
                 DPadCluster(
                   state: s,
                   hapticsEnabled: widget.hapticsEnabled,
                 ),
-                const SizedBox(height: 12),
-                // Start / Select
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+
+                // Guide Button + Start / Select
+                Column(
                   children: [
-                    _buildPillButton(
-                      label: 'SEL',
-                      active: s.buttonSelect,
-                      onChanged: (v) => s.buttonSelect = v,
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.menu_book, size: 12, color: Colors.white),
+                        label: const Text('REF GUIDE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 9)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF6B00),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          minimumSize: const Size(0, 26),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        ),
+                        onPressed: () => _showTekkenReferenceGuide(context),
+                      ),
                     ),
-                    _buildPillButton(
-                      label: 'START',
-                      active: s.buttonStart,
-                      onChanged: (v) => s.buttonStart = v,
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildPillButton(
+                          label: 'SEL',
+                          active: s.buttonSelect,
+                          onChanged: (v) => s.buttonSelect = v,
+                        ),
+                        _buildPillButton(
+                          label: 'START',
+                          active: s.buttonStart,
+                          onChanged: (v) => s.buttonStart = v,
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -389,16 +774,16 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
             ),
           ),
 
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
 
-          // ── RIGHT PANEL: Shoulders + 2x2 Attack + Combos ─────────────
+          // ── RIGHT PANEL: Shoulders + 2x2 Arcade Grid + Combos ─────────
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: F1Theme.glassDecoration(),
+              padding: const EdgeInsets.all(6),
+              decoration: F1Theme.glassDecoration(borderColor: const Color(0xFFFF6B00).withOpacity(0.5)),
               child: Column(
                 children: [
-                  // ── Row 1: Shoulder / Trigger row (Tekken 8) ────────
+                  // ── Row 1: Shoulder / Trigger Row ──
                   Row(
                     children: [
                       _buildShoulderButton(
@@ -411,7 +796,7 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
                       const SizedBox(width: 4),
                       _buildShoulderButton(
                         label: 'L1',
-                        sublabel: 'BLOCK',
+                        sublabel: 'BLOCK / SPECIAL',
                         active: s.paddleDownshift,
                         color: F1Theme.neonCyan,
                         onChanged: (v) => s.paddleDownshift = v,
@@ -419,7 +804,7 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
                       const SizedBox(width: 4),
                       _buildShoulderButton(
                         label: 'R1',
-                        sublabel: 'THROW',
+                        sublabel: 'THROW (1+3)',
                         active: s.paddleUpshift,
                         color: F1Theme.electricAmber,
                         onChanged: (v) => s.paddleUpshift = v,
@@ -435,62 +820,66 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
                     ],
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
-                  // ── Row 2: 2×2 Attack Buttons (Tekken 8 Notation) ──
+                  // ── Row 2: 2×2 Attack Buttons (Tekken Standard Arcade Grid) ──
+                  // Top Left: 1 (LP, Xbox X)  |  Top Right: 2 (RP, Xbox Y)
+                  // Bottom Left: 3 (LK, Xbox A)| Bottom Right: 4 (RK, Xbox B)
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final btnSize =
-                            (constraints.maxHeight * 0.42).clamp(56.0, 88.0);
-                        final spacing =
-                            (constraints.maxHeight * 0.07).clamp(6.0, 18.0);
+                        final btnSize = (constraints.maxHeight * 0.44).clamp(52.0, 84.0);
+                        final spacing = (constraints.maxHeight * 0.06).clamp(4.0, 14.0);
                         return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // Top row: X (LK, blue)  |  Y (RP, yellow)
+                              // Top Row: 1 (LP) | 2 (RP)
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   _buildAttackButton(
-                                    xboxLabel: 'X',
-                                    tekkenLabel: '3 (LK)',
-                                    active: s.buttonX,
-                                    color: const Color(0xFF0078D4),
-                                    onChanged: (v) => s.buttonX = v,
+                                    tekkenNumber: '1',
+                                    limbNotation: 'LP',
+                                    platformInput: 'X / Square',
+                                    active: s.buttonA,
+                                    color: F1Theme.neonCyan,
+                                    onChanged: (v) => s.buttonA = v,
                                     size: btnSize,
                                   ),
                                   SizedBox(width: spacing * 1.5),
                                   _buildAttackButton(
-                                    xboxLabel: 'Y',
-                                    tekkenLabel: '2 (RP)',
+                                    tekkenNumber: '2',
+                                    limbNotation: 'RP',
+                                    platformInput: 'Y / Triangle',
                                     active: s.buttonY,
-                                    color: const Color(0xFFFFB900),
+                                    color: F1Theme.electricAmber,
                                     onChanged: (v) => s.buttonY = v,
                                     size: btnSize,
                                   ),
                                 ],
                               ),
                               SizedBox(height: spacing),
-                              // Bottom row: A (LP, green)  |  B (RK, red)
+                              // Bottom Row: 3 (LK) | 4 (RK)
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   _buildAttackButton(
-                                    xboxLabel: 'A',
-                                    tekkenLabel: '1 (LP)',
-                                    active: s.buttonA,
+                                    tekkenNumber: '3',
+                                    limbNotation: 'LK',
+                                    platformInput: 'A / Cross',
+                                    active: s.buttonX,
                                     color: const Color(0xFF107C10),
-                                    onChanged: (v) => s.buttonA = v,
+                                    onChanged: (v) => s.buttonX = v,
                                     size: btnSize,
                                   ),
                                   SizedBox(width: spacing * 1.5),
                                   _buildAttackButton(
-                                    xboxLabel: 'B',
-                                    tekkenLabel: '4 (RK)',
+                                    tekkenNumber: '4',
+                                    limbNotation: 'RK',
+                                    platformInput: 'B / Circle',
                                     active: s.buttonB,
-                                    color: const Color(0xFFE81123),
+                                    color: F1Theme.f1Red,
                                     onChanged: (v) => s.buttonB = v,
                                     size: btnSize,
                                   ),
@@ -503,9 +892,9 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
                     ),
                   ),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
 
-                  // ── Row 3: Tekken 8 Combo Strip ──────────────────────
+                  // ── Row 3: Tekken 8 Macro Combo Strip ──
                   Row(
                     children: [
                       _buildComboChip(
@@ -518,15 +907,6 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
                         color: F1Theme.neonCyan,
                       ),
                       _buildComboChip(
-                        line1: '2+4',
-                        line2: 'RP · RK',
-                        setters: [
-                          (v) => s.buttonY = v,
-                          (v) => s.buttonB = v,
-                        ],
-                        color: F1Theme.electricAmber,
-                      ),
-                      _buildComboChip(
                         line1: '3+4',
                         line2: 'LK · RK',
                         setters: [
@@ -536,21 +916,29 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
                         color: F1Theme.neonGreen,
                       ),
                       _buildComboChip(
-                        line1: '1+3+4',
-                        line2: 'TAUNT',
+                        line1: '1+3',
+                        line2: 'THROW 1',
                         setters: [
                           (v) => s.buttonA = v,
                           (v) => s.buttonX = v,
-                          (v) => s.buttonB = v,
                         ],
-                        color: F1Theme.magentaPurple,
+                        color: F1Theme.electricAmber,
                       ),
                       _buildComboChip(
-                        line1: 'HEAT SMASH',
-                        line2: 'LP · RK',
+                        line1: '2+4',
+                        line2: 'THROW 2',
                         setters: [
-                          (v) => s.buttonA = v,
+                          (v) => s.buttonY = v,
                           (v) => s.buttonB = v,
+                        ],
+                        color: Colors.purpleAccent,
+                      ),
+                      _buildComboChip(
+                        line1: 'HEAT SMASH (2+3)',
+                        line2: 'RP · LK',
+                        setters: [
+                          (v) => s.buttonY = v,
+                          (v) => s.buttonX = v,
                         ],
                         color: const Color(0xFFFF6B00),
                         isHeat: true,
@@ -573,6 +961,54 @@ class _TekkenControllerLayoutState extends State<TekkenControllerLayout> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Private Roster & Chip helper widgets ───────────────────────────────
+class _GuideChip extends StatelessWidget {
+  final String label;
+  const _GuideChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(color: Colors.white70, fontSize: 10),
+      ),
+    );
+  }
+}
+
+class _RosterTag extends StatelessWidget {
+  final String name;
+  final bool isDlc;
+  const _RosterTag({required this.name, this.isDlc = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isDlc ? F1Theme.electricAmber.withOpacity(0.2) : Colors.black45,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: isDlc ? F1Theme.electricAmber : Colors.white24),
+      ),
+      child: Text(
+        name,
+        style: TextStyle(
+          color: isDlc ? F1Theme.electricAmber : Colors.white70,
+          fontSize: 10,
+          fontWeight: isDlc ? FontWeight.bold : FontWeight.normal,
+        ),
       ),
     );
   }
