@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/models/controller_state.dart';
+import '../../../core/services/audio_service.dart';
 import '../../../core/services/feedback_service.dart';
 import '../../../core/theme/f1_theme.dart';
 import '../widgets/dpad_cluster.dart';
+import '../widgets/steering_wheel_widget.dart';
 
 /// Asphalt Legends Unite official arcade controller layout.
 ///
@@ -35,6 +37,12 @@ class _AsphaltControllerLayoutState extends State<AsphaltControllerLayout> {
   @override
   void initState() {
     super.initState();
+    AudioService.init().then((_) {
+      if (mounted) {
+        AudioService.playBgm();
+        AudioService.startEngine();
+      }
+    });
     // Simulate slight ambient nitro refill for visual dynamism
     _nitroTimer = Timer.periodic(const Duration(milliseconds: 300), (_) {
       if (mounted && _nitroLevel < 1.0) {
@@ -47,6 +55,8 @@ class _AsphaltControllerLayoutState extends State<AsphaltControllerLayout> {
 
   @override
   void dispose() {
+    AudioService.stopBgm();
+    AudioService.stopEngine();
     _nitroTimer?.cancel();
     super.dispose();
   }
@@ -56,6 +66,7 @@ class _AsphaltControllerLayoutState extends State<AsphaltControllerLayout> {
   /// Fires Instant Double-Tap Nitro for Shockwave
   void _fireShockwaveNitro() {
     FeedbackService.shockwaveBurst();
+    AudioService.playNitroSound();
     setState(() {
       _nitroLevel = 0.0;
       widget.state.buttonA = true;
@@ -90,6 +101,7 @@ class _AsphaltControllerLayoutState extends State<AsphaltControllerLayout> {
   /// Fires Perfect Nitro Macro (Timed double tap)
   void _firePerfectNitro() {
     FeedbackService.nitroBoost();
+    AudioService.playNitroSound();
     setState(() {
       _nitroLevel = (_nitroLevel - 0.4).clamp(0.0, 1.0);
       widget.state.buttonA = true;
@@ -154,6 +166,59 @@ class _AsphaltControllerLayoutState extends State<AsphaltControllerLayout> {
   }
 
   // ── UI Builders ──────────────────────────────────────────────────────
+
+  Widget _buildSmallSysButton({
+    required IconData icon,
+    required bool active,
+    required void Function(bool) onChanged,
+  }) {
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) {
+        FeedbackService.lightTick();
+        setState(() {
+          onChanged(true);
+          widget.state.notifyStateChanged();
+        });
+      },
+      onPointerUp: (_) {
+        Future.delayed(const Duration(milliseconds: 40), () {
+          if (mounted) {
+            setState(() {
+              onChanged(false);
+              widget.state.notifyStateChanged();
+            });
+          }
+        });
+      },
+      onPointerCancel: (_) {
+        if (mounted) {
+          setState(() {
+            onChanged(false);
+            widget.state.notifyStateChanged();
+          });
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 30),
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: active ? Colors.white24 : F1Theme.carbonCard,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: active ? Colors.white : Colors.white38,
+            width: 1.0,
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 14,
+          color: active ? Colors.white : Colors.white70,
+        ),
+      ),
+    );
+  }
 
   Widget _buildShoulderButton({
     required String label,
@@ -516,37 +581,62 @@ class _AsphaltControllerLayoutState extends State<AsphaltControllerLayout> {
                   ],
                 ),
 
-                // TouchDrive Route Selectors (Q/E)
-                Row(
-                  children: [
-                    _buildRoutePickButton(
-                      label: 'ROUTE LEFT',
-                      keyName: 'Q / D-LEFT',
-                      active: s.buttonX || s.dpad == 7,
-                      onChanged: (v) {
-                        s.buttonX = v;
-                        s.dpad = v ? 7 : 0;
-                      },
-                      icon: Icons.arrow_back_ios,
-                    ),
-                    _buildRoutePickButton(
-                      label: 'ROUTE RIGHT',
-                      keyName: 'E / D-RIGHT',
-                      active: s.buttonY || s.dpad == 3,
-                      onChanged: (v) {
-                        s.buttonY = v;
-                        s.dpad = v ? 3 : 0;
-                      },
-                      icon: Icons.arrow_forward_ios,
-                    ),
-                  ],
-                ),
+                if (_touchDriveEnabled) ...[
+                  // TouchDrive Route Selectors (Q/E)
+                  Row(
+                    children: [
+                      _buildRoutePickButton(
+                        label: 'ROUTE LEFT',
+                        keyName: 'Q / D-LEFT',
+                        active: s.buttonX || s.dpad == 7,
+                        onChanged: (v) {
+                          s.buttonX = v;
+                          s.dpad = v ? 7 : 0;
+                        },
+                        icon: Icons.arrow_back_ios,
+                      ),
+                      _buildRoutePickButton(
+                        label: 'ROUTE RIGHT',
+                        keyName: 'E / D-RIGHT',
+                        active: s.buttonY || s.dpad == 3,
+                        onChanged: (v) {
+                          s.buttonY = v;
+                          s.dpad = v ? 3 : 0;
+                        },
+                        icon: Icons.arrow_forward_ios,
+                      ),
+                    ],
+                  ),
 
-                // Precision D-Pad Cluster
-                DPadCluster(
-                  state: s,
-                  hapticsEnabled: widget.hapticsEnabled,
-                ),
+                  // Precision D-Pad Cluster
+                  DPadCluster(
+                    state: s,
+                    hapticsEnabled: widget.hapticsEnabled,
+                  ),
+                ] else ...[
+                  // Manual Mode Steering Wheel
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: SteeringWheelWidget(
+                        state: s,
+                        rotationDegrees: 180,
+                        gyroEnabled: true,
+                        gyroSensitivity: 1.5,
+                        playerColor: const Color(0xFFFF6B00),
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    'GYRO STEERING ACTIVE',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -561,6 +651,22 @@ class _AsphaltControllerLayoutState extends State<AsphaltControllerLayout> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildSmallSysButton(
+                      icon: Icons.pause,
+                      active: s.buttonStart,
+                      onChanged: (v) => s.buttonStart = v,
+                    ),
+                    _buildSmallSysButton(
+                      icon: Icons.videocam,
+                      active: s.buttonSelect,
+                      onChanged: (v) => s.buttonSelect = v,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 const Text(
                   'NITRO',
                   style: TextStyle(
