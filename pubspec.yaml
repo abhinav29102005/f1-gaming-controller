@@ -44,6 +44,7 @@ dependencies:
   network_info_plus: ^6.0.0
   google_fonts: ^6.2.1
   audioplayers: ^6.7.1
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

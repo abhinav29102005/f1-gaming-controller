@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import '../models/connection_stats.dart';
 import 'native_hid_bridge.dart';
 import 'socket_relay.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ConnectionManager {
   TransportMode activeMode = TransportMode.udpRelay;
@@ -10,13 +11,22 @@ class ConnectionManager {
   bool isBleHidRegistered = false;
 
   Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedHost = prefs.getString('saved_host_address');
+    if (savedHost != null && savedHost.isNotEmpty) {
+      socketRelay.hostAddress = savedHost;
+    }
     await socketRelay.initSocket();
   }
 
   Future<bool> setMode(TransportMode mode, {String? hostAddress, int? port, String? deviceName}) async {
     activeMode = mode;
     if (mode == TransportMode.udpRelay) {
-      if (hostAddress != null) socketRelay.hostAddress = hostAddress;
+      if (hostAddress != null) {
+        socketRelay.hostAddress = hostAddress;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('saved_host_address', hostAddress);
+      }
       if (port != null) socketRelay.hostPort = port;
       await socketRelay.initSocket();
       return true;

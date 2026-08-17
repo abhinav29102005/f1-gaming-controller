@@ -108,31 +108,17 @@ def main():
     else:   print(f"  {YELLOW}  ⚠ Firewall: Run as Administrator if connection fails{RESET}")
     print()
 
-    # Virtual gamepad
-    virtual_pad = None
+    # Virtual gamepads
+    virtual_pads = {}
     if not VIGEM_AVAILABLE:
         print(f"  {YELLOW}  ⚠ vgamepad not installed — run: pip install vgamepad{RESET}")
         print(f"    Also install ViGEmBus: https://github.com/nefarius/ViGEmBus/releases\n")
     else:
-        try:
-            virtual_pad = vg.VX360Gamepad()
-            print(f"  {GREEN}  ✓ Virtual Xbox 360 Controller ready{RESET}\n")
-        except Exception as e:
-            print(f"  {RED}  ✗ ViGEmBus error: {e}{RESET}")
-            print(f"    Install ViGEmBus: https://github.com/nefarius/ViGEmBus/releases\n")
+        print(f"  {GREEN}  ✓ ViGEmBus ready (supporting up to 4 players){RESET}\n")
 
     # Socket
     sock = make_socket(PORT)
-    mobile_addr = None
-
-    # Haptic callback
-    if virtual_pad is not None:
-        def rumble_cb(client, target, large, small, led, user_data):
-            if mobile_addr and (large > 30 or small > 30):
-                try: sock.sendto(f"F1_VIB:{large}:{small}".encode(), mobile_addr)
-                except Exception: pass
-        try: virtual_pad.register_notification(callback_function=rumble_cb)
-        except Exception: pass
+    mobile_addrs = {}
 
     print(f"  {BOLD}{'═'*68}{RESET}")
     print(f"  {GREEN}{BOLD}  READY{RESET} — Listening on UDP :{PORT}")
@@ -159,9 +145,10 @@ def main():
 
     def graceful_exit(*args):
         print(f"\n  {YELLOW}Shutting down...{RESET}")
-        if virtual_pad:
-            try: virtual_pad.reset(); virtual_pad.update()
-            except Exception: pass
+        if virtual_pads:
+            for pad in virtual_pads.values():
+                try: pad.reset(); pad.update()
+                except Exception: pass
         print(f"  Total packets: {pkt_total}")
         if not SLAVE: 
             try: input("  Press Enter to exit...")
@@ -218,8 +205,24 @@ def main():
 
                 pkt_total += 1
                 pkt_this_sec += 1
-                mobile_addr = addr
+                mobile_addrs[player_id] = addr
                 last_packet_time = now
+
+                # Dynamically instantiate gamepad for this player
+                if VIGEM_AVAILABLE and player_id not in virtual_pads:
+                    try:
+                        pad = vg.VX360Gamepad()
+                        virtual_pads[player_id] = pad
+                        def rumble_cb(client, target, large, small, led, user_data):
+                            pid = user_data
+                            m_addr = mobile_addrs.get(pid)
+                            if m_addr and (large > 30 or small > 30):
+                                try: sock.sendto(f"F1_VIB:{large}:{small}".encode(), m_addr)
+                                except Exception: pass
+                        pad.register_notification(callback_function=rumble_cb, user_data=player_id)
+                        print(f"  {GREEN}  ✓ Spawned Virtual Gamepad for Player {player_id+1}{RESET}")
+                    except Exception as e:
+                        print(f"  {RED}  ✗ ViGEmBus spawn error for Player {player_id+1}: {e}{RESET}")
 
                 if not connected:
                     connected = True
@@ -236,8 +239,8 @@ def main():
                     del sent_times[oldest]
 
                 # Feed virtual gamepad
-                if virtual_pad is not None:
-                    pad = virtual_pad
+                if player_id in virtual_pads:
+                    pad = virtual_pads[player_id]
                     pad.reset()
                     pad.left_joystick_float(x_value_float=steer, y_value_float=0.0)
                     pad.right_trigger_float(value_float=thr)
@@ -290,7 +293,7 @@ def main():
 
                     ping_str = f"{CYAN}{ping_avg:.0f}ms{RESET}" if ping_avg > 0 else f"{DIM}--ms{RESET}"
 
-                    print(f"  {CYAN}{hz_avg:>3}Hz{RESET} {ping_str} │ "
+                    print(f"  {CYAN}{hz_avg:>3}Hz{RESET} {ping_str} │ P{player_id+1} │ "
                           f"Steer [{steer_bar}] {tl['steer']:+.2f} │ "
                           f"Thr [{thr_bar}] │ Brk [{brk_bar}]")
                     print(f"  {DIM}{pkt_total:>6} pkts{RESET} │ "
@@ -315,7 +318,7 @@ def main():
                 sock.close()
                 sock = make_socket(PORT)
                 connected = False
-                mobile_addr = None
+                mobile_addrs.clear()
             except Exception:
                 pass
 

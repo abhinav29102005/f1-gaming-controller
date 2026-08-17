@@ -144,6 +144,42 @@ class MultiplayerLobbyWidget extends StatelessWidget {
 
                   return Row(
                     children: [
+                      // Player Slot Toggle
+                      InkWell(
+                        onTap: () {
+                          final nextSlot = (state.playerId + 1) % 4;
+                          onPlayerSlotChanged(nextSlot);
+                        },
+                        child: ListenableBuilder(
+                          listenable: state,
+                          builder: (context, child) {
+                            final pColor = F1Theme.getPlayerColor(state.playerId);
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              margin: const EdgeInsets.only(right: 4),
+                              decoration: BoxDecoration(
+                                color: pColor.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: pColor),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.person, color: pColor, size: 10),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'P${state.playerId + 1}',
+                                    style: TextStyle(
+                                      color: pColor,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        ),
+                      ),
                       // Full Sync Badge
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
